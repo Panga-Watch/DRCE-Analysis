@@ -40,4 +40,19 @@ library(DT)
 library(stargazer)
 library(xtable)
 library(here)
+library("mlogit")
 ```
+
+
+
+```{r}
+data("ModeCanada", package = "mlogit")
+MC <- mlogit.data(ModeCanada, subset = noalt == 4, chid.var = "case",
+                  alt.var = "alt", drop.index = TRUE)
+ml.MC <- mlogit(choice ~ freq + cost + ivt + ovt | urban + income, MC, 
+reflevel = 'car', alt.subset = c("car", "train", "air"))
+hl.MC <- mlogit(choice ~ freq + cost + ivt + ovt | urban + income, MC, 
+reflevel = 'car', alt.subset = c("car", "train", "air"), heterosc = TRUE)
+coef(summary(hl.MC))[11:12, ]
+```
+

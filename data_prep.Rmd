@@ -75,16 +75,37 @@ survey_ce_total <- rbind(survey_ce1, survey_ce2)
 
 pooled_data <- survey_ce_total %>%
     mutate(ASC=1) %>% 
-  select(STR,RES, ASC, 6:8) %>% 
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
-  dplyr::select(STR, RES, ASC, sos, info, own)
+ # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(STR, RES, ASC, package, sos, info, own)
 ## Now we have all observations for our pooled model; phase 1. 
+
+
+packages_1 <- packages %>%
+  filter(package <= 16)
+packages_2 <- packages %>%
+  filter(package >16)
+
+packages_join <- inner_join(packages_1, packages_2, by = c("info", "sos", "own"))
+
+pooled_data_1 <- pooled_data %>%
+  filter(package < 17)
+
+pooled_data_2 <- pooled_data %>%
+  filter(package>16)  %>%
+  left_join(packages_join, by = c("package" = "package.y", "info", "sos", "own")) %>%
+  select(-package) %>%
+  rename("package" = "package.x")
+
+pooled_data_final <- rbind(pooled_data_1, pooled_data_2)
+pooled_data_final <- pooled_data_final %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  
 
 DT::datatable(pooled_data)
 
-write.csv(pooled_data, "int/pooled_data.csv", row.names = FALSE)
+write.csv(pooled_data_final, "int/pooled_data.csv", row.names = FALSE)
 
 ```
 
@@ -110,9 +131,11 @@ pt2_package<-pt2_join %>%
 pt2_nopackage<-pt2_join %>% 
   mutate(sos=0, info=0, own=0, ASC=0) %>% 
   mutate(RES = ifelse(RES == 1, 0, 1)) %>%
-  dplyr::select(STR, RES, ASC, sos, info, own)
+  dplyr::select(STR, RES, ASC, package, sos, info, own) %>%
+  mutate(package = 0, sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
 
-ce_total<-rbind(pooled_data, pt2_nopackage) # this is the data for if we implemented the theoretical standard opt out model; we are not accounting for bias associated with DRCE here.
+
+ce_total<-rbind(pooled_data_final, pt2_nopackage) # this is the data for if we implemented the theoretical standard opt out model; we are not accounting for bias associated with DRCE here.
 
 DT::datatable(ce_total)
 
@@ -153,12 +176,26 @@ unforced_data <- survey_ce_total_unforced %>%
   mutate(ASC=1) %>% 
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
-  dplyr::select(STR, RES, ASC, sos, info, own)
+ # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(STR, RES, ASC, package, sos, info, own)
 
-DT::datatable(unforced_data)
+unforced_data_1 <- unforced_data %>%
+  filter(package < 17)
 
-write.csv(unforced_data, "int/unforced_data.csv", row.names = FALSE)
+unforced_data_2 <- unforced_data %>%
+  filter(package>16)  %>%
+  left_join(packages_join, by = c("package" = "package.y", "info", "sos", "own")) %>%
+  select(-package) %>%
+  rename("package" = "package.x")
+
+unforced_data_final <- rbind(unforced_data_1, unforced_data_2)
+unforced_data_final <- unforced_data_final %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+
+DT::datatable(unforced_data_final)
+
+write.csv(unforced_data_final, "int/unforced_data.csv", row.names = FALSE)
 ```
 
 ```{r}
@@ -194,8 +231,22 @@ forced_data <- survey_ce_total_forced %>%
   mutate(ASC=1) %>% 
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
-  dplyr::select(STR, RES, ASC, sos, info, own)
+ # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(STR, RES, ASC, package, sos, info, own)
+
+
+forced_data_1 <- forced_data %>%
+  filter(package < 17)
+
+forced_data_2 <- forced_data %>%
+  filter(package>16)  %>%
+  left_join(packages_join, by = c("package" = "package.y", "info", "sos", "own")) %>%
+  select(-package) %>%
+  rename("package" = "package.x")
+
+forced_data_final <- rbind(forced_data_1, forced_data_2)
+forced_data_final <- forced_data_final %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
 
 DT::datatable(forced_data)
 
