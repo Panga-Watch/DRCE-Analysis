@@ -1,0 +1,205 @@
+---
+title: "Data Preparation"
+author: "*Compiled on `r date()` by `r Sys.info()['user']`*"
+output: 
+  html_document:
+    toc: true
+    toc_float: yes
+    number_sections: true
+    theme: cerulean
+    highlight: haddock
+    includes: 
+  pdf_document:
+    toc: true
+---
+
+## Summary
+Data prep to run an analysis on the DRCE conducted in Indonesia and Mexico. 
+ 
+## Data Source 
+Personal Interviews
+ 
+## Reference 
+Panga Watch
+ 
+## Downloaded
+September 30, 2019
+ 
+Time range: 
+2019
+ 
+## Format
+comma separated values
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(DT)
+```
+
+
+```{r}
+# Read in all of the raw data
+master_surv_resp <- read_csv("raw/master_survey_resp.csv")
+version_to_package <- read_csv("raw/version_to_package.csv")
+packages <- read_csv("raw/packages.csv")
+```
+
+```{r}
+## prep the data for the pooled model... i.e. only phase one.
+
+version1<-version_to_package %>% 
+  filter(package<=16) %>% 
+  left_join(packages)
+
+survey_ce1<-master_surv_resp %>% 
+  select(survey_id, survey_version, choice) %>% 
+  mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
+  merge(version1, all = TRUE) %>% 
+  arrange(survey_id) %>% 
+  mutate(STR=c(1:205)) 
+
+version2<-version_to_package %>% 
+  filter(package>=17)%>% 
+  left_join(packages)
+
+survey_ce2<-master_surv_resp %>% 
+  select(survey_id, survey_version, choice) %>% 
+  mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
+  merge(version2, all = TRUE)%>% 
+  arrange(survey_id) %>% 
+  mutate(STR=c(1:205)) 
+
+survey_ce_total <- rbind(survey_ce1, survey_ce2) 
+
+pooled_data <- survey_ce_total %>%
+    mutate(ASC=1) %>% 
+  select(STR,RES, ASC, 6:8) %>% 
+  mutate(STR=STR*1000+1) %>% 
+  arrange(STR) %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(STR, RES, ASC, sos, info, own)
+## Now we have all observations for our pooled model; phase 1. 
+
+DT::datatable(pooled_data)
+
+write.csv(pooled_data, "int/pooled_data.csv", row.names = FALSE)
+
+```
+
+
+```{r}
+## prep the data for the standard opt out model... i.e. treating it as if it is not dual response and there is no bias associated... treating respondents' answers in the dual question as if they were made simultaneously with the first stage question (the standard CE approach in which the opt-out appears alongside the other alternatives. 
+
+pt2_response<-master_surv_resp %>% 
+  select(survey_id, package_nopackage) 
+
+pt2_join<-survey_ce_total %>% 
+  filter(RES==1) %>% 
+  mutate(STR=STR*1000+2) %>% 
+  select(STR, sos,info,own,survey_version,package, survey_id) %>% 
+  left_join(pt2_response) %>%
+  mutate(RES=package_nopackage) %>% 
+  select(-package_nopackage)
+  
+  
+pt2_package<-pt2_join %>% 
+  mutate(ASC=1)
+  
+pt2_nopackage<-pt2_join %>% 
+  mutate(sos=0, info=0, own=0, ASC=0) %>% 
+  mutate(RES = ifelse(RES == 1, 0, 1)) %>%
+  dplyr::select(STR, RES, ASC, sos, info, own)
+
+ce_total<-rbind(pooled_data, pt2_nopackage) # this is the data for if we implemented the theoretical standard opt out model; we are not accounting for bias associated with DRCE here.
+
+DT::datatable(ce_total)
+
+write.csv(ce_total, "int/standard_opt_out.csv", row.names = FALSE)
+
+```
+
+```{r}
+## prep the data for the unforced model... i.e. filtering for those who did not opt out in phase two, and take the results from phase 1. 
+
+version1<-version_to_package %>% 
+  filter(package<=16) %>% 
+  left_join(packages)
+
+survey_ce1_unforced <-master_surv_resp %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  filter(package_nopackage == 1) %>%
+  mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
+  merge(version1, all = TRUE) %>% 
+  arrange(survey_id) %>% 
+  mutate(STR=c(1:163)) 
+
+version2<-version_to_package %>% 
+  filter(package>=17)%>% 
+  left_join(packages)
+
+survey_ce2_unforced <-master_surv_resp %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  filter(package_nopackage == 1) %>%
+  mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
+  merge(version2, all = TRUE)%>% 
+  arrange(survey_id) %>% 
+  mutate(STR=c(1:163)) 
+
+survey_ce_total_unforced <- rbind(survey_ce1_unforced, survey_ce2_unforced) 
+
+unforced_data <- survey_ce_total_unforced %>%
+  mutate(ASC=1) %>% 
+  mutate(STR=STR*1000+1) %>% 
+  arrange(STR) %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(STR, RES, ASC, sos, info, own)
+
+DT::datatable(unforced_data)
+
+write.csv(unforced_data, "int/unforced_data.csv", row.names = FALSE)
+```
+
+```{r}
+## prep the data for the forced model... i.e. filtering for those who DID opt out in phase two, and take the results from phase 1. 
+
+version1<-version_to_package %>% 
+  filter(package<=16) %>% 
+  left_join(packages)
+
+survey_ce1_forced <-master_surv_resp %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  filter(package_nopackage == 0) %>%
+  mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
+  merge(version1, all = TRUE) %>% 
+  arrange(survey_id) %>% 
+  mutate(STR=c(1:42)) 
+
+version2<-version_to_package %>% 
+  filter(package>=17)%>% 
+  left_join(packages)
+
+survey_ce2_forced <-master_surv_resp %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  filter(package_nopackage == 0) %>%
+  mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
+  merge(version2, all = TRUE)%>% 
+  arrange(survey_id) %>% 
+  mutate(STR=c(1:42)) 
+
+survey_ce_total_forced <- rbind(survey_ce1_forced, survey_ce2_forced) 
+
+forced_data <- survey_ce_total_forced %>%
+  mutate(ASC=1) %>% 
+  mutate(STR=STR*1000+1) %>% 
+  arrange(STR) %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(STR, RES, ASC, sos, info, own)
+
+DT::datatable(forced_data)
+
+write.csv(forced_data, "int/forced_data.csv", row.names = FALSE)
+```
+
+

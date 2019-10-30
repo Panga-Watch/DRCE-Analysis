@@ -1,0 +1,43 @@
+---
+title: "Analysis"
+author: "*Compiled on `r date()` by `r Sys.info()['user']`*"
+output: 
+  html_document:
+    toc: true
+    toc_float: yes
+    number_sections: true
+    theme: cerulean
+    highlight: haddock
+    includes: 
+  pdf_document:
+    toc: true
+---
+
+## Summary
+Mixed Logit Analysis on the DRCE conducted in Indonesia and Mexico. Split into four different models; Standard opt-out model (Model I), Pooled (Model II), Unforced Responses (Model III), and Forced Responses (Model IV).
+ 
+## Data Source 
+Personal Interviews
+ 
+## Reference 
+Panga Watch
+ 
+## Downloaded
+September 30, 2019
+ 
+Time range: 
+2019
+ 
+## Format
+comma separated values
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(survival)
+library(AlgDesign)
+library(DT)
+library(stargazer)
+library(xtable)
+library(here)
+```
