@@ -54,7 +54,7 @@ version1<-version_to_package %>%
   left_join(packages)
 
 survey_ce1<-master_surv_resp %>% 
-  select(survey_id, survey_version, choice) %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
   mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
   merge(version1, all = TRUE) %>% 
   arrange(survey_id) %>% 
@@ -65,7 +65,7 @@ version2<-version_to_package %>%
   left_join(packages)
 
 survey_ce2<-master_surv_resp %>% 
-  select(survey_id, survey_version, choice) %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
   mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
   merge(version2, all = TRUE)%>% 
   arrange(survey_id) %>% 
@@ -78,7 +78,7 @@ pooled_data <- survey_ce_total %>%
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
  # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
-  dplyr::select(STR, RES, ASC, package, sos, info, own)
+  dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
 ## Now we have all observations for our pooled model; phase 1. 
 
 
@@ -100,13 +100,16 @@ pooled_data_2 <- pooled_data %>%
 
 pooled_data_final <- rbind(pooled_data_1, pooled_data_2)
 pooled_data_final <- pooled_data_final %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  arrange(survey_id)
   
 
-DT::datatable(pooled_data)
+DT::datatable(pooled_data_final)
 
 write.csv(pooled_data_final, "int/pooled_data.csv", row.names = FALSE)
 
+
+pooled_data_final <- read_csv("int/pooled_data.csv")
 ```
 
 
@@ -131,16 +134,54 @@ pt2_package<-pt2_join %>%
 pt2_nopackage<-pt2_join %>% 
   mutate(sos=0, info=0, own=0, ASC=0) %>% 
   mutate(RES = ifelse(RES == 1, 0, 1)) %>%
-  dplyr::select(STR, RES, ASC, package, sos, info, own) %>%
+  dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own) %>%
   mutate(package = 0, sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
 
 
-ce_total<-rbind(pooled_data_final, pt2_nopackage) # this is the data for if we implemented the theoretical standard opt out model; we are not accounting for bias associated with DRCE here.
+#fix survey_ce_total
+survey_ce_total_fix <- survey_ce_total %>%
+  mutate(RES = ifelse(package_nopackage == 0, 0, RES)) # make sure that when they select "no package", "0" is assigned...
+
+pooled_data_fix <- survey_ce_total_fix %>%
+    mutate(ASC=1) %>% 
+  mutate(STR=STR*1000+1) %>% 
+  arrange(STR) %>%
+ # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
+## Now we have all observations for our pooled model; phase 1. 
+
+
+packages_1 <- packages %>%
+  filter(package <= 16)
+packages_2 <- packages %>%
+  filter(package >16)
+
+packages_join <- inner_join(packages_1, packages_2, by = c("info", "sos", "own"))
+
+pooled_data_1_fix <- pooled_data_fix %>%
+  filter(package < 17)
+
+pooled_data_2_fix <- pooled_data_fix %>%
+  filter(package>16)  %>%
+  left_join(packages_join, by = c("package" = "package.y", "info", "sos", "own")) %>%
+  select(-package) %>%
+  rename("package" = "package.x")
+
+pooled_data_final_fix <- rbind(pooled_data_1_fix, pooled_data_2_fix)
+pooled_data_fina_fixl <- pooled_data_final_fix %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+
+ce_total<-rbind(pooled_data_final_fix, pt2_nopackage) 
+# this is the data for if we implemented the theoretical standard opt out model; we are not accounting for bias associated with DRCE here.
+
+ce_total <- arrange(ce_total, survey_id)
 
 DT::datatable(ce_total)
 
 write.csv(ce_total, "int/standard_opt_out.csv", row.names = FALSE)
 
+standard_opt_out <- read_csv("int/standard_opt_out.csv")
 ```
 
 ```{r}
@@ -177,7 +218,7 @@ unforced_data <- survey_ce_total_unforced %>%
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
  # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
-  dplyr::select(STR, RES, ASC, package, sos, info, own)
+  dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
 
 unforced_data_1 <- unforced_data %>%
   filter(package < 17)
@@ -190,12 +231,15 @@ unforced_data_2 <- unforced_data %>%
 
 unforced_data_final <- rbind(unforced_data_1, unforced_data_2)
 unforced_data_final <- unforced_data_final %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  arrange(survey_id)
 
 
 DT::datatable(unforced_data_final)
 
 write.csv(unforced_data_final, "int/unforced_data.csv", row.names = FALSE)
+
+unforced_data_final <- read_csv("int/unforced_data.csv")
 ```
 
 ```{r}
@@ -232,7 +276,7 @@ forced_data <- survey_ce_total_forced %>%
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
  # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
-  dplyr::select(STR, RES, ASC, package, sos, info, own)
+  dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
 
 
 forced_data_1 <- forced_data %>%
@@ -246,11 +290,61 @@ forced_data_2 <- forced_data %>%
 
 forced_data_final <- rbind(forced_data_1, forced_data_2)
 forced_data_final <- forced_data_final %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  arrange(survey_id)
 
-DT::datatable(forced_data)
+DT::datatable(forced_data_final)
 
 write.csv(forced_data, "int/forced_data.csv", row.names = FALSE)
+
+forced_data_final <- read_csv("int/forced_data.csv")
 ```
 
+
+
+
+BAD CODE:
+
+```{r}
+## issue occurring when package_nopackage == 0... need to fix this so it is correct.
+
+# ce_total_spread_package <- ce_total %>%
+#   select(survey_id, package, RES) %>%
+#   group_by(survey_id) %>%
+#   summarise_each(funs(paste(., collapse = "-"))) %>%
+#   mutate(RES = ifelse(RES == "0-1-1", "0-0-1", RES)) %>%
+#   mutate(RES = ifelse(RES == "1-0-1", "0-0-1", RES)) %>%
+#   mutate(package_join = package,
+#          RES_join = RES) %>%
+#   separate(package, c("package_offer_1", "package_offer_2", "package_offer_3")) %>%
+#   #separate(RES, c("RES_1", "RES_2", "RES_3")) %>%
+#   gather(var, package, package_offer_1:package_offer_3) %>%
+#   select(-RES)
+#   #gather(var_RES, RES, RES_1:RES_3) %>%
+#   #arrange(survey_id, var_RES)
+# 
+# ce_total_spread_RES <- ce_total %>%
+#   select(survey_id, package, RES) %>%
+#   group_by(survey_id) %>%
+#   summarise_each(funs(paste(., collapse = "-"))) %>%
+#   mutate(RES = ifelse(RES == "0-1-1", "0-0-1", RES)) %>%
+#   mutate(RES = ifelse(RES == "1-0-1", "0-0-1", RES)) %>%
+#   mutate(package_join = package,
+#          RES_join = RES) %>%
+#   #separate(package, c("package_offer_1", "package_offer_2", "package_offer_3")) %>%
+#   separate(RES, c("RES_1", "RES_2", "RES_3")) %>%
+#   gather(var_RES, RES, RES_1:RES_3) %>%
+#   select(-package)
+#   #gather(var, package, package_offer_1:package_offer_3)
+# 
+# ce_total_spread_package_111 <- ce_total_spread_package %>%
+#   select(-var, -package_join, -RES_join)
+# ce_total_fix <- inner_join(ce_total_spread_package, ce_total_spread_RES, by = c("survey_id", "package_join", "RES_join"))  
+# 
+# ce_total_fix_1 <- head(ce_total_fix, 615)
+# ce_total_fix_1 <- ce_total_fix_1 %>%
+#   select(-package, -var, -var_RES, -package_join, -RES_join)
+# 
+# ce_total_fix_final <- inner_join(ce_total_fix_1, ce_total_spread_package_111)
+```
 
