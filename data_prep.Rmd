@@ -100,7 +100,7 @@ pooled_data_2 <- pooled_data %>%
 
 pooled_data_final <- rbind(pooled_data_1, pooled_data_2)
 pooled_data_final <- pooled_data_final %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), noalt= 2) %>%
   arrange(survey_id)
   
 
@@ -168,14 +168,16 @@ pooled_data_2_fix <- pooled_data_fix %>%
   rename("package" = "package.x")
 
 pooled_data_final_fix <- rbind(pooled_data_1_fix, pooled_data_2_fix)
-pooled_data_fina_fixl <- pooled_data_final_fix %>%
+pooled_data_final_fix <- pooled_data_final_fix %>%
   mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
 
 
 ce_total<-rbind(pooled_data_final_fix, pt2_nopackage) 
 # this is the data for if we implemented the theoretical standard opt out model; we are not accounting for bias associated with DRCE here.
 
-ce_total <- arrange(ce_total, survey_id)
+ce_total <- ce_total %>%
+  arrange(survey_id) %>%
+  mutate(noalt = 3)
 
 DT::datatable(ce_total)
 
@@ -231,7 +233,7 @@ unforced_data_2 <- unforced_data %>%
 
 unforced_data_final <- rbind(unforced_data_1, unforced_data_2)
 unforced_data_final <- unforced_data_final %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), noalt = 2) %>%
   arrange(survey_id)
 
 
@@ -290,12 +292,12 @@ forced_data_2 <- forced_data %>%
 
 forced_data_final <- rbind(forced_data_1, forced_data_2)
 forced_data_final <- forced_data_final %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), noalt = 2) %>%
   arrange(survey_id)
 
 DT::datatable(forced_data_final)
 
-write.csv(forced_data, "int/forced_data.csv", row.names = FALSE)
+write.csv(forced_data_final, "int/forced_data.csv", row.names = FALSE)
 
 forced_data_final <- read_csv("int/forced_data.csv")
 ```

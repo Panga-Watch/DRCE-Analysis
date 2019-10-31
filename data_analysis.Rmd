@@ -15,6 +15,8 @@ output:
 
 ## Summary
 Mixed Logit Analysis on the DRCE conducted in Indonesia and Mexico. Split into four different models; Standard opt-out model (Model I), Pooled (Model II), Unforced Responses (Model III), and Forced Responses (Model IV).
+
+Will try to simulate a mixed logit model based off of this: https://cran.r-project.org/web/packages/mlogit/vignettes/c4.relaxiid.html
  
 ## Data Source 
 Personal Interviews
