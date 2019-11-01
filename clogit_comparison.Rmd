@@ -1,0 +1,81 @@
+---
+title: "clogit"
+output: html_document
+---
+
+## Summary
+Running Conditional Logit Analysis on the following models to compare output and explore potential bias; Standard opt-out model (Model I), Pooled (Model II), Unforced Responses (Model III), and Forced Responses (Model IV).
+ 
+## Data Source 
+Personal Interviews
+ 
+## Reference 
+Panga Watch
+ 
+## Downloaded
+October 21, 2019
+ 
+Time range: 
+2019
+ 
+## Format
+comma separated values
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(survival)
+library(AlgDesign)
+library(DT)
+library(stargazer)
+library(xtable)
+library(here)
+library(kableExtra)
+#library("mlogit")
+```
+
+Standard opt-out model (Model I)
+```{r}
+standard_opt_out <- read_csv("int/standard_opt_out.csv") %>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+
+standard_clogit<-clogit(RES~ASC+sos+info+own+strata(STR), data=standard_opt_out)
+standard_clogit
+```
+
+Pooled (Model II)
+```{r}
+pooled <- read_csv("int/pooled_data.csv")%>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+
+pooled_clogit<-clogit(RES~sos+info+own+strata(STR), data=pooled)
+pooled_clogit
+```
+
+Unforced Responses (Model III)
+```{r}
+unforced <- read_csv("int/unforced_data.csv")%>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+unforced_clogit<-clogit(RES~sos+info+own+strata(STR), data=unforced)
+unforced_clogit
+```
+
+Forced Responses (Model IV)
+```{r}
+forced <- read_csv("int/forced_data.csv")%>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+forced_clogit<-clogit(RES~sos+info+own+strata(STR), data=forced)
+forced_clogit
+```
+
+```{r}
+standard_clogit
+pooled_clogit
+unforced_clogit
+forced_clogit
+```
+
