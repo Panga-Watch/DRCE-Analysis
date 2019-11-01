@@ -56,5 +56,19 @@ reflevel = 'car', alt.subset = c("car", "train", "air"))
 hl.MC <- mlogit(choice ~ freq + cost + ivt + ovt | urban + income, MC, 
 reflevel = 'car', alt.subset = c("car", "train", "air"), heterosc = TRUE)
 coef(summary(hl.MC))[11:12, ]
+
+summary(hl.MC)
 ```
+
+```{r}
+standard_opt_out <- read_csv("int/standard_opt_out.csv") %>%
+  select("case" = "survey_id", "choice" = "RES", "alt" = "package", sos, info, own, noalt) %>%
+  mutate(alt = as.character(alt))
+
+MC_standard <- mlogit.data(standard_opt_out, subset = noalt == 3, chid.var = "case",
+                  alt.var = "alt", drop.index = TRUE)
+
+hl.MC_standard <- mlogit(choice ~ sos + info + own, MC_standard, heterosc = TRUE)
+```
+
 
