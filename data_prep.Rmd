@@ -48,6 +48,7 @@ packages <- read_csv("raw/packages.csv")
 
 ```{r}
 ## prep the data for the pooled model... i.e. only phase one.
+pooled_length<-nrow(master_surv_resp) #replacing mutate(STR=c(1:205)) to mutate(STR=c(1:data_length)) 
 
 version1<-version_to_package %>% 
   filter(package<=16) %>% 
@@ -58,7 +59,7 @@ survey_ce1<-master_surv_resp %>%
   mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
   merge(version1, all = TRUE) %>% 
   arrange(survey_id) %>% 
-  mutate(STR=c(1:205)) 
+  mutate(STR=c(1:pooled_length)) 
 
 version2<-version_to_package %>% 
   filter(package>=17)%>% 
@@ -69,7 +70,7 @@ survey_ce2<-master_surv_resp %>%
   mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
   merge(version2, all = TRUE)%>% 
   arrange(survey_id) %>% 
-  mutate(STR=c(1:205)) 
+  mutate(STR=c(1:pooled_length)) 
 
 survey_ce_total <- rbind(survey_ce1, survey_ce2) 
 
@@ -189,6 +190,14 @@ standard_opt_out <- read_csv("int/standard_opt_out.csv")
 ```{r}
 ## prep the data for the unforced model... i.e. filtering for those who did not opt out in phase two, and take the results from phase 1. 
 
+#length of data to replacec mutate(STR=c(1:163)) to mutate(STR=c(1:unforced_length))
+unforced_length<-master_surv_resp %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  filter(package_nopackage == 1) %>%
+  mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
+  merge(version1, all = TRUE) %>% 
+  nrow()
+
 version1<-version_to_package %>% 
   filter(package<=16) %>% 
   left_join(packages)
@@ -199,7 +208,7 @@ survey_ce1_unforced <-master_surv_resp %>%
   mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
   merge(version1, all = TRUE) %>% 
   arrange(survey_id) %>% 
-  mutate(STR=c(1:163)) 
+  mutate(STR=c(1:unforced_length)) 
 
 version2<-version_to_package %>% 
   filter(package>=17)%>% 
@@ -211,7 +220,7 @@ survey_ce2_unforced <-master_surv_resp %>%
   mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
   merge(version2, all = TRUE)%>% 
   arrange(survey_id) %>% 
-  mutate(STR=c(1:163)) 
+  mutate(STR=c(1:unforced_length)) 
 
 survey_ce_total_unforced <- rbind(survey_ce1_unforced, survey_ce2_unforced) 
 
@@ -247,6 +256,14 @@ unforced_data_final <- read_csv("int/unforced_data.csv")
 ```{r}
 ## prep the data for the forced model... i.e. filtering for those who DID opt out in phase two, and take the results from phase 1. 
 
+#length of data to replacec mutate(STR=c(1:45)) to mutate(STR=c(1:forced_length))
+forced_length <-master_surv_resp %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  filter(package_nopackage == 0) %>%
+  mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
+  merge(version1, all = TRUE) %>% 
+  nrow()
+
 version1<-version_to_package %>% 
   filter(package<=16) %>% 
   left_join(packages)
@@ -257,7 +274,7 @@ survey_ce1_forced <-master_surv_resp %>%
   mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
   merge(version1, all = TRUE) %>% 
   arrange(survey_id) %>% 
-  mutate(STR=c(1:42)) 
+  mutate(STR=c(1:forced_length)) 
 
 version2<-version_to_package %>% 
   filter(package>=17)%>% 
@@ -269,7 +286,7 @@ survey_ce2_forced <-master_surv_resp %>%
   mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
   merge(version2, all = TRUE)%>% 
   arrange(survey_id) %>% 
-  mutate(STR=c(1:42)) 
+  mutate(STR=c(1:forced_length)) 
 
 survey_ce_total_forced <- rbind(survey_ce1_forced, survey_ce2_forced) 
 
