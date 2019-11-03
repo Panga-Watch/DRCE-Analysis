@@ -51,7 +51,7 @@ pooled <- read_csv("int/pooled_data.csv")%>%
 
 
 pooled_clogit<-clogit(RES~sos+info+own+strata(STR), data=pooled)
-pooled_clogit
+summary(pooled_clogit)
 ```
 
 Unforced Responses (Model III)
@@ -69,13 +69,21 @@ forced <- read_csv("int/forced_data.csv")%>%
   mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
 
 forced_clogit<-clogit(RES~sos+info+own+strata(STR), data=forced)
-forced_clogit
+summary(forced_clogit)
 ```
 
 ```{r}
 standard_clogit
 pooled_clogit
-unforced_clogit
-forced_clogit
+summary(unforced_clogit)
+summary(forced_clogit)
+```
+```{r}
+#pooled= 144.3
+#unforced = 148.5
+#forced = 13.73
+
+#(-2(144.3-(148.5+13.73)))
+#35.68
 ```
 
