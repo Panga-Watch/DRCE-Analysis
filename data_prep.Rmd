@@ -319,51 +319,52 @@ write.csv(forced_data_final, "int/forced_data.csv", row.names = FALSE)
 forced_data_final <- read_csv("int/forced_data.csv")
 ```
 
-
-
-
-BAD CODE:
-
 ```{r}
-## issue occurring when package_nopackage == 0... need to fix this so it is correct.
+master_surv_resp <- read_csv("raw/master_survey_resp.csv")
+version_to_package <- read_csv("raw/version_to_package.csv")
+packages <- read_csv("raw/packages.csv")
 
-# ce_total_spread_package <- ce_total %>%
-#   select(survey_id, package, RES) %>%
-#   group_by(survey_id) %>%
-#   summarise_each(funs(paste(., collapse = "-"))) %>%
-#   mutate(RES = ifelse(RES == "0-1-1", "0-0-1", RES)) %>%
-#   mutate(RES = ifelse(RES == "1-0-1", "0-0-1", RES)) %>%
-#   mutate(package_join = package,
-#          RES_join = RES) %>%
-#   separate(package, c("package_offer_1", "package_offer_2", "package_offer_3")) %>%
-#   #separate(RES, c("RES_1", "RES_2", "RES_3")) %>%
-#   gather(var, package, package_offer_1:package_offer_3) %>%
-#   select(-RES)
-#   #gather(var_RES, RES, RES_1:RES_3) %>%
-#   #arrange(survey_id, var_RES)
-# 
-# ce_total_spread_RES <- ce_total %>%
-#   select(survey_id, package, RES) %>%
-#   group_by(survey_id) %>%
-#   summarise_each(funs(paste(., collapse = "-"))) %>%
-#   mutate(RES = ifelse(RES == "0-1-1", "0-0-1", RES)) %>%
-#   mutate(RES = ifelse(RES == "1-0-1", "0-0-1", RES)) %>%
-#   mutate(package_join = package,
-#          RES_join = RES) %>%
-#   #separate(package, c("package_offer_1", "package_offer_2", "package_offer_3")) %>%
-#   separate(RES, c("RES_1", "RES_2", "RES_3")) %>%
-#   gather(var_RES, RES, RES_1:RES_3) %>%
-#   select(-package)
-#   #gather(var, package, package_offer_1:package_offer_3)
-# 
-# ce_total_spread_package_111 <- ce_total_spread_package %>%
-#   select(-var, -package_join, -RES_join)
-# ce_total_fix <- inner_join(ce_total_spread_package, ce_total_spread_RES, by = c("survey_id", "package_join", "RES_join"))  
-# 
-# ce_total_fix_1 <- head(ce_total_fix, 615)
-# ce_total_fix_1 <- ce_total_fix_1 %>%
-#   select(-package, -var, -var_RES, -package_join, -RES_join)
-# 
-# ce_total_fix_final <- inner_join(ce_total_fix_1, ce_total_spread_package_111)
+#standard WTP
+standard_opt_out <- read_csv("int/standard_opt_out_fix.csv")
+
+wtp_wtr_raw <- master_surv_resp %>% 
+  select(survey_id, country, package_nopackage,  wtp_1, wtp_2, wtp_3, wtp_4, wtr_1, wtr_2, wtr_3, wtr_4)
+
+standard_join_wtp <- standard_opt_out %>%
+  left_join(wtp_wtr_raw) %>%
+  filter(RES == 1) %>%
+  select(-package_nopackage, -wtr_1, -wtr_2, -wtr_3, -wtr_4) %>%
+  mutate(wtp_1 = ifelse(!is.na(wtp_1) & (wtp_1 == "y"|wtp_1 == "yes"), 5, wtp_1),
+        wtp_2 = ifelse(!is.na(wtp_2) & (wtp_2 == "y"|wtp_2 == "yes"), 10, wtp_2),
+        wtp_3 = ifelse(!is.na(wtp_3) &(wtp_3 == "y"|wtp_3 == "yes"), 15, wtp_3), 
+        wtp_4 = ifelse(!is.na(wtp_4) & (wtp_4 == "y"|wtp_4 == "yes"), 20, wtp_4)) %>%
+   mutate(wtp_1 = ifelse(wtp_1 == "n" &is.na(wtp_2)&is.na(wtp_3)&is.na(wtp_4)  , 0, wtp_1)) %>%
+    mutate(wtp_1 = ifelse( wtp_1 == "n", NA, wtp_1),
+        wtp_2 = ifelse(wtp_2 == "n", NA, wtp_2),
+        wtp_3 = ifelse(wtp_3 == "n", NA, wtp_3), 
+        wtp_4 = ifelse(wtp_4 == "n", NA, wtp_4)) %>%
+  mutate(wtp_1 = ifelse(is.na(wtp_1) &is.na(wtp_2)&is.na(wtp_3)&is.na(wtp_4)  , 0, wtp_1)) %>%
+  mutate(wtp = case_when(
+    !is.na(wtp_4) ~ wtp_4,
+    is.na(wtp_4) & !is.na(wtp_3) ~ wtp_3, 
+    is.na(wtp_4) & is.na(wtp_3) & !is.na(wtp_2) ~ wtp_2,
+    is.na(wtp_4) & is.na(wtp_3) & is.na(wtp_2) & !is.na(wtp_1) ~ wtp_1)
+    ) %>%
+  select(survey_id, country, package, wtp, sos, info, own, own.fisher, own.industry, own.gov, own.public, STR, RES, ASC, noalt) %>%
+  mutate(wtp = as.numeric(wtp))
+
+wtp_opt_out <- standard_opt_out %>%
+  filter(RES == 0) %>%
+  mutate(wtp = 0)
+
+  
+standard_wtp <- full_join(standard_join_wtp, wtp_opt_out) 
+
+standard_wtp_final <- standard_wtp %>%
+    mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), own.fisher = as.factor(own.fisher), own.industry = as.factor(own.industry), own.gov = as.factor(own.gov), own.public = as.factor(own.public)) %>%
+  arrange(survey_id)
+
+write.csv(standard_wtp_final, "int/standard_opt_out_wtp.csv", row.names = FALSE)
 ```
+
 

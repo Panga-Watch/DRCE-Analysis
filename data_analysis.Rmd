@@ -42,67 +42,71 @@ library(DT)
 library(stargazer)
 library(xtable)
 library(here)
-library("mlogit")
+library(kableExtra)
+library(support.CEs)
+#library("mlogit")
 ```
-
-
-
-```{r}
-data("ModeCanada", package = "mlogit")
-MC <- mlogit.data(ModeCanada, subset = noalt == 4, chid.var = "case",
-                  alt.var = "alt", drop.index = TRUE)
-ml.MC <- mlogit(choice ~ freq + cost + ivt + ovt | urban + income, MC, 
-reflevel = 'car', alt.subset = c("car", "train", "air"))
-hl.MC <- mlogit(choice ~ freq + cost + ivt + ovt | urban + income, MC, 
-reflevel = 'car', alt.subset = c("car", "train", "air"), heterosc = TRUE)
-coef(summary(hl.MC))[11:12, ]
-
-summary(hl.MC)
-```
-
 
 Standard opt-out model (Model I)
 ```{r}
-standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+standard_opt_out <- read_csv("int/standard_opt_out.csv") %>% 
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
-standard_clogit<-clogit(RES~ASC + sos+info+own+strata(STR), data=standard_opt_out)
-summary(standard_clogit)
+write.csv(standard_opt_out, "int/standard_opt_out_fix.csv", row.names = FALSE)
+
+standard_clogit<-clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=standard_opt_out)
+standard_clogit
+
+standard_opt_out_wtp <- read_csv("int/standard_opt_out_wtp.csv") %>%
+    mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), own.fisher = as.factor(own.fisher), own.industry = as.factor(own.industry), own.gov = as.factor(own.gov), own.public = as.factor(own.public)) %>%
+  arrange(survey_id)
+standard_wtp_clogit<-clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov+own.public +wtp+strata(STR), data=standard_opt_out_wtp)
+standard_wtp_clogit
+
+# mwtp(output = standard_opt_out_wtp, monetary.variables = c("wtp"), nonmonetary.variables =
+#  c("sos", "info", "own.fisher", "own.industry", "own.gov", "own.public"),
+#  percentile.points = c(5, 95), seed = 987)
 ```
 
 Pooled (Model II)
 ```{r}
 pooled <- read_csv("int/pooled_data.csv")%>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
+write.csv(pooled, "int/pooled_data_fix.csv", row.names = FALSE)
 
-
-pooled_clogit<-clogit(RES~sos+info+own+strata(STR), data=pooled)
-summary(pooled_clogit)
+pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=pooled)
 pooled_clogit
 ```
 
 Unforced Responses (Model III)
 ```{r}
 unforced <- read_csv("int/unforced_data.csv")%>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
-unforced_clogit<-clogit(RES~sos+info+own+strata(STR), data=unforced)
+write.csv(unforced, "int/unforced_fix.csv", row.names = FALSE)
+
+unforced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=unforced)
 unforced_clogit
 ```
 
 Forced Responses (Model IV)
 ```{r}
 forced <- read_csv("int/forced_data.csv")%>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
-forced_clogit<-clogit(RES~sos+info+own+strata(STR), data=forced)
+write.csv(forced, "int/forced_fix.csv", row.names = FALSE)
+
+forced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=forced)
 summary(forced_clogit)
 ```
 
 ```{r}
 #K = 5
 #M = 2
-
 
 pooled_log <- logLik(pooled_clogit) #-74.11078 (df=5)
 unforced_log <- logLik(unforced_clogit) #-42.90397 (df=5)
@@ -113,13 +117,6 @@ forced_log <- logLik(forced_clogit) #-22.24721 (df=5)
 
 -2*(74.11078 - (42.90397 + 22.24721)) #17.9192
 # if this then 17.9192 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced...........
-
-pooled_log_1 <- pooled_clogit$loglik[1]
-unforced_log_1 <- unforced_clogit$loglik[1]
-forced_log_1 <- forced_clogit$loglik[1]
-
--2*(pooled_log_1- (unforced_log_1 + forced_log_1)) #1.705303e-13
-# if this then 1.705303e-13 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced...........
 ```
 
 
@@ -131,7 +128,9 @@ ffd <- gen.factorial(c(2,2,4), varNames = c("sos", "info", "own"), factors = "al
 ffd 
 
 all_packages <- ffd %>%
-  mutate(STR = 1001, package = 1:16) #RES = rep(c(1,0),8))
+  mutate(STR = 1001, package = 1:16) %>% 
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0)) 
 
 pooled_predictions <- predict(pooled_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
 
@@ -153,8 +152,8 @@ pooled_predictions_data <- pooled_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 1 ~ "Non-anon",
-    info == 2 ~ "Anon"
+    info == 0 ~ "Non-anon",
+    info == 1 ~ "Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -163,8 +162,8 @@ pooled_predictions_data <- pooled_predictions_data %>%
    own == 4 ~ "Public Access"
   ),
   sos = case_when(
-    sos == 1 ~ "No",
-    sos == 2 ~ "Yes"
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
   ))
 
 write.csv(pooled_predictions_data, "output/pooled_probs.csv", row.names = FALSE)
@@ -182,8 +181,8 @@ forced_predictions_data <- data.frame(all_packages, forced_predictions)
 #https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
 #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
 
-# sos	1 = no, 2 = yes
-# info 	1 = non, 2 = anon
+# sos	0 = no, 1 = yes
+# info 	0 = non, 1 = anon
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
@@ -194,8 +193,8 @@ forced_predictions_data <- forced_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 1 ~ "Non-anon",
-    info == 2 ~ "Anon"
+    info == 0 ~ "Non-anon",
+    info == 1 ~ "Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -204,8 +203,8 @@ forced_predictions_data <- forced_predictions_data %>%
    own == 4 ~ "Public Access"
   ),
   sos = case_when(
-    sos == 1 ~ "No",
-    sos == 2 ~ "Yes"
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
   ))
 
 write.csv(forced_predictions_data, "output/forced_probs.csv", row.names = FALSE)
@@ -222,8 +221,8 @@ unforced_predictions_data <- data.frame(all_packages, unforced_predictions)
 #https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
 #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
 
-# sos	1 = no, 2 = yes
-# info 	1 = non, 2 = anon
+# sos	0 = no, 1 = yes
+# info 	0 = non, 1 = anon
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
@@ -234,8 +233,8 @@ unforced_predictions_data <- unforced_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 1 ~ "Non-anon",
-    info == 2 ~ "Anon"
+    info == 0 ~ "Non-anon",
+    info == 1 ~ "Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -244,22 +243,17 @@ unforced_predictions_data <- unforced_predictions_data %>%
    own == 4 ~ "Public Access"
   ),
   sos = case_when(
-    sos == 1 ~ "No",
-    sos == 2 ~ "Yes"
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
   ))
 
 write.csv(unforced_predictions_data, "output/unforced_probs.csv", row.names = FALSE)
 ```
 
 ```{r}
-#forced predictions 
-df<-data.frame(0, 0, 0, 1001, 0)
-names(df)<-c("sos","info", "own", "STR", "package")
-df <- df %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
-
-all_packages_standard <- rbind(all_packages, df)
-
+#standard predictions
+all_packages_standard <- all_packages %>%
+  mutate(ASC = 1)
 standard_predictions <- predict(standard_clogit, newdata = all_packages_standard, type = "risk", se.fit = TRUE)
 
 standard_predictions_data <- data.frame(all_packages, standard_predictions)  
@@ -268,8 +262,8 @@ standard_predictions_data <- data.frame(all_packages, standard_predictions)
 #https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
 #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
 
-# sos	1 = no, 2 = yes
-# info 	1 = non, 2 = anon
+# sos	0 = no, 1 = yes
+# info 	0 = non, 1 = anon
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
@@ -280,8 +274,8 @@ standard_predictions_data <- standard_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 1 ~ "Non-anon",
-    info == 2 ~ "Anon"
+    info == 0 ~ "Non-anon",
+    info == 1 ~ "Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -290,9 +284,11 @@ standard_predictions_data <- standard_predictions_data %>%
    own == 4 ~ "Public Access"
   ),
   sos = case_when(
-    sos == 1 ~ "No",
-    sos == 2 ~ "Yes"
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
   ))
+
+write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FALSE)
 ```
 
 
