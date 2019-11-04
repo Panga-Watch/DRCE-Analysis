@@ -55,7 +55,7 @@ version1<-version_to_package %>%
   left_join(packages)
 
 survey_ce1<-master_surv_resp %>% 
-  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  #select(survey_id, survey_version, choice, package_nopackage ) %>% 
   mutate(RES = ifelse(choice == 1, 1, 0)) %>% 
   merge(version1, all = TRUE) %>% 
   arrange(survey_id) %>% 
@@ -66,7 +66,7 @@ version2<-version_to_package %>%
   left_join(packages)
 
 survey_ce2<-master_surv_resp %>% 
-  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  #select(survey_id, survey_version, choice, package_nopackage, country) %>% 
   mutate(RES = ifelse(choice == 2, 1, 0)) %>% 
   merge(version2, all = TRUE)%>% 
   arrange(survey_id) %>% 
@@ -78,8 +78,8 @@ pooled_data <- survey_ce_total %>%
     mutate(ASC=1) %>% 
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
- # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
-  dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
+  #mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own, country)
 ## Now we have all observations for our pooled model; phase 1. 
 
 
@@ -122,7 +122,7 @@ pt2_response<-master_surv_resp %>%
 
 pt2_join<-survey_ce_total %>% 
   filter(RES==1) %>% 
-  mutate(STR=STR*1000+2) %>% 
+  mutate(STR=STR*1000+1) %>% 
   select(STR, sos,info,own,survey_version,package, survey_id) %>% 
   left_join(pt2_response) %>%
   mutate(RES=package_nopackage) %>% 
@@ -182,7 +182,7 @@ ce_total <- ce_total %>%
 
 DT::datatable(ce_total)
 
-write.csv(ce_total, "int/standard_opt_out.csv", row.names = FALSE)
+write.csv(ce_total, "int/standard_opt_out_fix.csv", row.names = FALSE)
 
 standard_opt_out <- read_csv("int/standard_opt_out.csv")
 ```

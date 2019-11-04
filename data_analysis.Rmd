@@ -16,7 +16,7 @@ output:
 ## Summary
 Mixed Logit Analysis on the DRCE conducted in Indonesia and Mexico. Split into four different models; Standard opt-out model (Model I), Pooled (Model II), Unforced Responses (Model III), and Forced Responses (Model IV).
 
-Will try to simulate a mixed logit model based off of this: https://cran.r-project.org/web/packages/mlogit/vignettes/c4.relaxiid.html
+Will try to simulate both mixed logit and conditional logit models based off of this: https://cran.r-project.org/web/packages/mlogit/vignettes/c4.relaxiid.html
  
 ## Data Source 
 Personal Interviews
@@ -60,15 +60,239 @@ coef(summary(hl.MC))[11:12, ]
 summary(hl.MC)
 ```
 
+
+Standard opt-out model (Model I)
 ```{r}
-standard_opt_out <- read_csv("int/standard_opt_out.csv") %>%
-  select("case" = "survey_id", "choice" = "RES", "alt" = "package", sos, info, own, noalt) %>%
-  mutate(alt = as.character(alt))
+standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
 
-MC_standard <- mlogit.data(standard_opt_out, subset = noalt == 3, chid.var = "case",
-                  alt.var = "alt", drop.index = TRUE)
+standard_clogit<-clogit(RES~ASC + sos+info+own+strata(STR), data=standard_opt_out)
+summary(standard_clogit)
+```
 
-hl.MC_standard <- mlogit(choice ~ sos + info + own, MC_standard, heterosc = TRUE)
+Pooled (Model II)
+```{r}
+pooled <- read_csv("int/pooled_data.csv")%>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+
+pooled_clogit<-clogit(RES~sos+info+own+strata(STR), data=pooled)
+summary(pooled_clogit)
+pooled_clogit
+```
+
+Unforced Responses (Model III)
+```{r}
+unforced <- read_csv("int/unforced_data.csv")%>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+unforced_clogit<-clogit(RES~sos+info+own+strata(STR), data=unforced)
+unforced_clogit
+```
+
+Forced Responses (Model IV)
+```{r}
+forced <- read_csv("int/forced_data.csv")%>% 
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+forced_clogit<-clogit(RES~sos+info+own+strata(STR), data=forced)
+summary(forced_clogit)
+```
+
+```{r}
+#K = 5
+#M = 2
+
+
+pooled_log <- logLik(pooled_clogit) #-74.11078 (df=5)
+unforced_log <- logLik(unforced_clogit) #-42.90397 (df=5)
+forced_log <- logLik(forced_clogit) #-22.24721 (df=5)
+
+-2*(logLik(pooled_clogit) - (logLik(unforced_clogit) + logLik(forced_clogit)))
+-2*(pooled_log- (unforced_log + forced_log))
+
+-2*(74.11078 - (42.90397 + 22.24721)) #17.9192
+# if this then 17.9192 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced...........
+
+pooled_log_1 <- pooled_clogit$loglik[1]
+unforced_log_1 <- unforced_clogit$loglik[1]
+forced_log_1 <- forced_clogit$loglik[1]
+
+-2*(pooled_log_1- (unforced_log_1 + forced_log_1)) #1.705303e-13
+# if this then 1.705303e-13 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced...........
+```
+
+
+```{r, include = FALSE}
+#predictions for pooled data
+
+library(AlgDesign)
+ffd <- gen.factorial(c(2,2,4), varNames = c("sos", "info", "own"), factors = "all") # construct a full factorial design which has two 2 level attributes and one 4 level attribute. factors = "all" indicates that all arguments are factors
+ffd 
+
+all_packages <- ffd %>%
+  mutate(STR = 1001, package = 1:16) #RES = rep(c(1,0),8))
+
+pooled_predictions <- predict(pooled_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
+
+pooled_predictions_data <- data.frame(all_packages, pooled_predictions)  
+
+#reasoning for predicting out a clogit model:
+#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+
+# sos	1 = no, 2 = yes
+# info 	1 = non, 2 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+pooled_predictions_data <- pooled_predictions_data %>%
+  mutate(level_probs1 = fit/(fit+ 1),
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-level_probs1) %>%
+  select(package, info, own, sos, level_probs1, level_se) %>%
+  mutate(info = case_when(
+    info == 1 ~ "Non-anon",
+    info == 2 ~ "Anon"
+  ), 
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry", 
+   own == 3 ~ "Government", 
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 1 ~ "No",
+    sos == 2 ~ "Yes"
+  ))
+
+write.csv(pooled_predictions_data, "output/pooled_probs.csv", row.names = FALSE)
+```
+
+
+```{r}
+#forced predictions 
+
+forced_predictions <- predict(forced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
+
+forced_predictions_data <- data.frame(all_packages, forced_predictions)  
+
+#reasoning for predicting out a clogit model:
+#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+
+# sos	1 = no, 2 = yes
+# info 	1 = non, 2 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+forced_predictions_data <- forced_predictions_data %>%
+  mutate(level_probs1 = fit/(fit+ 1),
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-level_probs1) %>%
+  select(package, info, own, sos, level_probs1, level_se) %>%
+  mutate(info = case_when(
+    info == 1 ~ "Non-anon",
+    info == 2 ~ "Anon"
+  ), 
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry", 
+   own == 3 ~ "Government", 
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 1 ~ "No",
+    sos == 2 ~ "Yes"
+  ))
+
+write.csv(forced_predictions_data, "output/forced_probs.csv", row.names = FALSE)
+```
+
+```{r}
+#unforced predictions 
+
+unforced_predictions <- predict(unforced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
+
+unforced_predictions_data <- data.frame(all_packages, unforced_predictions)  
+
+#reasoning for predicting out a clogit model:
+#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+
+# sos	1 = no, 2 = yes
+# info 	1 = non, 2 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+unforced_predictions_data <- unforced_predictions_data %>%
+  mutate(level_probs1 = fit/(fit+ 1),
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-level_probs1) %>%
+  select(package, info, own, sos, level_probs1, level_se) %>%
+  mutate(info = case_when(
+    info == 1 ~ "Non-anon",
+    info == 2 ~ "Anon"
+  ), 
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry", 
+   own == 3 ~ "Government", 
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 1 ~ "No",
+    sos == 2 ~ "Yes"
+  ))
+
+write.csv(unforced_predictions_data, "output/unforced_probs.csv", row.names = FALSE)
+```
+
+```{r}
+#forced predictions 
+df<-data.frame(0, 0, 0, 1001, 0)
+names(df)<-c("sos","info", "own", "STR", "package")
+df <- df %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+
+all_packages_standard <- rbind(all_packages, df)
+
+standard_predictions <- predict(standard_clogit, newdata = all_packages_standard, type = "risk", se.fit = TRUE)
+
+standard_predictions_data <- data.frame(all_packages, standard_predictions)  
+
+#reasoning for predicting out a clogit model:
+#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+
+# sos	1 = no, 2 = yes
+# info 	1 = non, 2 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+standard_predictions_data <- standard_predictions_data %>%
+  mutate(level_probs1 = fit/(fit+ 1),
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-level_probs1) %>%
+  select(package, info, own, sos, level_probs1, level_se) %>%
+  mutate(info = case_when(
+    info == 1 ~ "Non-anon",
+    info == 2 ~ "Anon"
+  ), 
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry", 
+   own == 3 ~ "Government", 
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 1 ~ "No",
+    sos == 2 ~ "Yes"
+  ))
 ```
 
 
