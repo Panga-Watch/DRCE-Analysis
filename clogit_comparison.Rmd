@@ -37,46 +37,50 @@ library(kableExtra)
 Standard opt-out model (Model I)
 ```{r}
 standard_opt_out <- read_csv("int/standard_opt_out.csv") %>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
 
-standard_clogit<-clogit(RES~ASC+sos+info+own+strata(STR), data=standard_opt_out)
+standard_clogit<-clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=standard_opt_out)
 standard_clogit
 ```
 
 Pooled (Model II)
 ```{r}
 pooled <- read_csv("int/pooled_data.csv")%>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
 
-pooled_clogit<-clogit(RES~sos+info+own+strata(STR), data=pooled)
-summary(pooled_clogit)
+pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=pooled)
+pooled_clogit
 ```
 
 Unforced Responses (Model III)
 ```{r}
 unforced <- read_csv("int/unforced_data.csv")%>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
-unforced_clogit<-clogit(RES~sos+info+own+strata(STR), data=unforced)
+unforced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=unforced)
 unforced_clogit
 ```
 
 Forced Responses (Model IV)
 ```{r}
 forced <- read_csv("int/forced_data.csv")%>% 
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own))
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
-forced_clogit<-clogit(RES~sos+info+own+strata(STR), data=forced)
+forced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=forced)
 summary(forced_clogit)
 ```
 
 ```{r}
 standard_clogit
 pooled_clogit
-summary(unforced_clogit)
-summary(forced_clogit)
+unforced_clogit
+forced_clogit
 ```
 ```{r}
 #pooled= 144.3
