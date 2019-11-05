@@ -43,14 +43,14 @@ library(stargazer)
 library(xtable)
 library(here)
 library(kableExtra)
-library(support.CEs)
+#library(support.CEs)
 #library("mlogit")
 ```
 
 Standard opt-out model (Model I)
 ```{r}
 standard_opt_out <- read_csv("int/standard_opt_out.csv") %>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
 write.csv(standard_opt_out, "int/standard_opt_out_fix.csv", row.names = FALSE)
@@ -72,7 +72,7 @@ standard_wtp_clogit
 Pooled (Model II)
 ```{r}
 pooled <- read_csv("int/pooled_data.csv")%>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 write.csv(pooled, "int/pooled_data_fix.csv", row.names = FALSE)
 
@@ -83,7 +83,7 @@ pooled_clogit
 Unforced Responses (Model III)
 ```{r}
 unforced <- read_csv("int/unforced_data.csv")%>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
 write.csv(unforced, "int/unforced_fix.csv", row.names = FALSE)
@@ -95,12 +95,13 @@ unforced_clogit
 Forced Responses (Model IV)
 ```{r}
 forced <- read_csv("int/forced_data.csv")%>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
 
 write.csv(forced, "int/forced_fix.csv", row.names = FALSE)
 
 forced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=forced)
+forced_clogit
 summary(forced_clogit)
 ```
 
@@ -120,7 +121,7 @@ forced_log <- logLik(forced_clogit) #-22.24721 (df=5)
 ```
 
 
-```{r, include = FALSE}
+```{r}
 #predictions for pooled data
 
 library(AlgDesign)
@@ -129,7 +130,7 @@ ffd
 
 all_packages <- ffd %>%
   mutate(STR = 1001, package = 1:16) %>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,1,0)) %>%
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0)) 
 
 pooled_predictions <- predict(pooled_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
@@ -152,8 +153,8 @@ pooled_predictions_data <- pooled_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 0 ~ "Non-anon",
-    info == 1 ~ "Anon"
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -167,6 +168,8 @@ pooled_predictions_data <- pooled_predictions_data %>%
   ))
 
 write.csv(pooled_predictions_data, "output/pooled_probs.csv", row.names = FALSE)
+
+DT::datatable(pooled_predictions_data)
 ```
 
 
@@ -193,8 +196,8 @@ forced_predictions_data <- forced_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 0 ~ "Non-anon",
-    info == 1 ~ "Anon"
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -208,6 +211,8 @@ forced_predictions_data <- forced_predictions_data %>%
   ))
 
 write.csv(forced_predictions_data, "output/forced_probs.csv", row.names = FALSE)
+
+DT::datatable(forced_predictions_data)
 ```
 
 ```{r}
@@ -233,8 +238,8 @@ unforced_predictions_data <- unforced_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 0 ~ "Non-anon",
-    info == 1 ~ "Anon"
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -248,6 +253,8 @@ unforced_predictions_data <- unforced_predictions_data %>%
   ))
 
 write.csv(unforced_predictions_data, "output/unforced_probs.csv", row.names = FALSE)
+
+DT::datatable(unforced_predictions_data)
 ```
 
 ```{r}
@@ -274,8 +281,8 @@ standard_predictions_data <- standard_predictions_data %>%
   arrange(-level_probs1) %>%
   select(package, info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
-    info == 0 ~ "Non-anon",
-    info == 1 ~ "Anon"
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
   ), 
   own = case_when(
    own == 1 ~ "Fishers",
@@ -289,6 +296,9 @@ standard_predictions_data <- standard_predictions_data %>%
   ))
 
 write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FALSE)
+
+
+DT::datatable(standard_predictions_data)
 ```
 
 
