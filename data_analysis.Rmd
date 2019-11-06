@@ -292,32 +292,7 @@ p
 
 Look at probability differences between individual attributes... i.e. holding everything else constant. Compare it to most likely package for GFW to implement... Non Anonymous, Public Ownership, and SOS button.
 
-```{r}
-base_package = 14
 
-change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 13]
-change_sos_no # adding an sos button increases prbability by ~64 percent
-
-change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == 2] - standard_predictions_data$level_probs1[standard_predictions_data$package == 1]
-
-change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == 10] - standard_predictions_data$level_probs1[standard_predictions_data$package == 9]
-
-change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == 6] - standard_predictions_data$level_probs1[standard_predictions_data$package == 5]
-
-change_anon_yes <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 16]
-change_anon_yes # making it non anonymous increases by ~2.5 percent
-
-change_own_to_industry <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 6]
-change_own_to_industry #making it from public to industry decreases by ~21.7 percent 
-
-change_own_to_fishermen <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 2]
-change_own_to_fishermen #changing it from public to fishermen increases prob by ~14.6 percent
-
-change_own_to_government <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 10]
-change_own_to_government #changing it from public to government increases prob by ~13.19 percent
-
-
-```
 
 
 

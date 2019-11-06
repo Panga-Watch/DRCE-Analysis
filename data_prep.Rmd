@@ -117,7 +117,7 @@ pooled_data_final <- read_csv("int/pooled_data_fix.csv")
 
 
 ```{r}
-## prep the data for the standard opt out model... i.e. treating it as if it is not dual response and there is no bias associated... treating respondents' answers in the dual question as if they were made simultaneously with the first stage question (the standard CE approach in which the opt-out appears alongside the other alternatives. 
+## prep the data for the standard opt out model... i.e. treating it as if it is not dual response and there is no bias associated... treating respondents' answers in the dual question as if they were made simultaneously with the first stage question (the standard CE approach in which the opt-out appears alongside the other alternatives). 
 
 pt2_response<-master_surv_resp %>% 
   select(survey_id, package_nopackage) 
@@ -149,7 +149,6 @@ pooled_data_fix <- survey_ce_total_fix %>%
     mutate(ASC=1) %>% 
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
- # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
   dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
 ## Now we have all observations for our pooled model; phase 1. 
 
@@ -232,7 +231,6 @@ unforced_data <- survey_ce_total_unforced %>%
   mutate(ASC=1) %>% 
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
- # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
   dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
 
 unforced_data_1 <- unforced_data %>%
@@ -300,7 +298,6 @@ forced_data <- survey_ce_total_forced %>%
   mutate(ASC=1) %>% 
   mutate(STR=STR*1000+1) %>% 
   arrange(STR) %>%
- # mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
   dplyr::select(survey_id, STR, RES, ASC, package, sos, info, own)
 
 
