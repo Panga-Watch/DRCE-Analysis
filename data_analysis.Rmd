@@ -101,7 +101,7 @@ ffd <- gen.factorial(c(2,2,4), varNames = c("sos", "info", "own"), factors = "al
 ffd 
 
 all_packages <- ffd %>%
-  mutate(STR = 1001, package = 1:16) %>% 
+  mutate(STR = 1001) %>% 
   mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0)) 
 
@@ -123,7 +123,7 @@ pooled_predictions_data <- pooled_predictions_data %>%
          level_se = se.fit/(se.fit + 1)) %>%
   select(-fit, -se.fit, -STR) %>%
   arrange(-level_probs1) %>%
-  select(package, info, own, sos, level_probs1, level_se) %>%
+  select(info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
     info == 0 ~ "Anon",
     info == 1 ~ "Non-Anon"
@@ -166,7 +166,7 @@ forced_predictions_data <- forced_predictions_data %>%
          level_se = se.fit/(se.fit + 1)) %>%
   select(-fit, -se.fit, -STR) %>%
   arrange(-level_probs1) %>%
-  select(package, info, own, sos, level_probs1, level_se) %>%
+  select(info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
     info == 0 ~ "Anon",
     info == 1 ~ "Non-Anon"
@@ -190,7 +190,7 @@ DT::datatable(forced_predictions_data)
 ```{r}
 #unforced predictions 
 
-unforced_predictions <- predict(unforced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE, reference = "sample")
+unforced_predictions <- predict(unforced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
 
 unforced_predictions_data <- data.frame(all_packages, unforced_predictions)  
 
@@ -208,7 +208,7 @@ unforced_predictions_data <- unforced_predictions_data %>%
          level_se = se.fit/(se.fit + 1)) %>%
   select(-fit, -se.fit, -STR) %>%
   arrange(-level_probs1) %>%
-  select(package, info, own, sos, level_probs1, level_se) %>%
+  select(info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
     info == 0 ~ "Anon",
     info == 1 ~ "Non-Anon"
@@ -227,18 +227,23 @@ unforced_predictions_data <- unforced_predictions_data %>%
 write.csv(unforced_predictions_data, "output/unforced_probs.csv", row.names = FALSE)
 
 DT::datatable(unforced_predictions_data)
+#0.9881482 
 
 p = (exp(unforced_clogit$coefficients[1]*1 + unforced_clogit$coefficients[2]*1 + unforced_clogit$coefficients[3]*1 + unforced_clogit$coefficients[4]*0 + unforced_clogit$coefficients[5]*0))/(1 + exp( unforced_clogit$coefficients[1]*1+ unforced_clogit$coefficients[2]*1 + unforced_clogit$coefficients[3]*1 + unforced_clogit$coefficients[4]*0+ unforced_clogit$coefficients[5]*0))
 p     
+#0.9881482 
+
 
 unforced_clogit
+
+unforced_check <- unforced %>%
+  filter(sos == 1, info == 1, own.fisher ==1 )
 ```
 
 ```{r}
 #standard predictions
 all_packages_standard <- all_packages %>%
-  mutate(ASC = 1) %>%
-  mutate(ASC = ifelse())
+  mutate(ASC = 1) 
 standard_predictions <- predict(standard_clogit, newdata = all_packages_standard, type = "risk", se.fit = TRUE)
 
 standard_predictions_data <- data.frame(all_packages, standard_predictions)  
@@ -257,7 +262,7 @@ standard_predictions_data <- standard_predictions_data %>%
          level_se = se.fit/(se.fit + 1)) %>%
   select(-fit, -se.fit, -STR) %>%
   arrange(-level_probs1) %>%
-  select(package, info, own, sos, level_probs1, level_se) %>%
+  select(info, own, sos, level_probs1, level_se) %>%
   mutate(info = case_when(
     info == 0 ~ "Anon",
     info == 1 ~ "Non-Anon"
