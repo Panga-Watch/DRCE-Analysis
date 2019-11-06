@@ -16,8 +16,6 @@ output:
 ## Summary
 Mixed Logit Analysis on the DRCE conducted in Indonesia and Mexico. Split into four different models; Standard opt-out model (Model I), Pooled (Model II), Unforced Responses (Model III), and Forced Responses (Model IV).
 
-Will try to simulate both mixed logit and conditional logit models based off of this: https://cran.r-project.org/web/packages/mlogit/vignettes/c4.relaxiid.html
- 
 ## Data Source 
 Personal Interviews
  
@@ -49,60 +47,34 @@ library(kableExtra)
 
 Standard opt-out model (Model I)
 ```{r}
-standard_opt_out <- read_csv("int/standard_opt_out.csv") %>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
-  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
+standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") 
 
-write.csv(standard_opt_out, "int/standard_opt_out_fix.csv", row.names = FALSE)
-
-standard_clogit<-clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=standard_opt_out)
+standard_clogit<-clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + own.public+strata(STR), data=standard_opt_out)
 standard_clogit
 
-standard_opt_out_wtp <- read_csv("int/standard_opt_out_wtp.csv") %>%
-    mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), own.fisher = as.factor(own.fisher), own.industry = as.factor(own.industry), own.gov = as.factor(own.gov), own.public = as.factor(own.public)) %>%
-  arrange(survey_id)
-standard_wtp_clogit<-clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov+own.public +wtp+strata(STR), data=standard_opt_out_wtp)
-standard_wtp_clogit
-
-# mwtp(output = standard_opt_out_wtp, monetary.variables = c("wtp"), nonmonetary.variables =
-#  c("sos", "info", "own.fisher", "own.industry", "own.gov", "own.public"),
-#  percentile.points = c(5, 95), seed = 987)
 ```
 
 Pooled (Model II)
 ```{r}
-pooled <- read_csv("int/pooled_data.csv")%>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
-  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
-write.csv(pooled, "int/pooled_data_fix.csv", row.names = FALSE)
-
-pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=pooled)
+pooled <- read_csv("int/pooled_data_fix.csv")
+pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+strata(STR), data=pooled)
 pooled_clogit
 ```
 
 Unforced Responses (Model III)
 ```{r}
-unforced <- read_csv("int/unforced_data.csv")%>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
-  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
+unforced <- read_csv("int/unforced_data_fix.csv")
 
-write.csv(unforced, "int/unforced_fix.csv", row.names = FALSE)
-
-unforced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=unforced)
+unforced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+strata(STR), data=unforced)
 unforced_clogit
 ```
 
 Forced Responses (Model IV)
 ```{r}
-forced <- read_csv("int/forced_data.csv")%>% 
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
-  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0))
-
-write.csv(forced, "int/forced_fix.csv", row.names = FALSE)
+forced <- read_csv("int/forced_data_fix.csv")
 
 forced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=forced)
 forced_clogit
-summary(forced_clogit)
 ```
 
 ```{r}
@@ -218,7 +190,7 @@ DT::datatable(forced_predictions_data)
 ```{r}
 #unforced predictions 
 
-unforced_predictions <- predict(unforced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
+unforced_predictions <- predict(unforced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE, reference = "sample")
 
 unforced_predictions_data <- data.frame(all_packages, unforced_predictions)  
 
@@ -255,12 +227,18 @@ unforced_predictions_data <- unforced_predictions_data %>%
 write.csv(unforced_predictions_data, "output/unforced_probs.csv", row.names = FALSE)
 
 DT::datatable(unforced_predictions_data)
+
+p = (exp(unforced_clogit$coefficients[1]*1 + unforced_clogit$coefficients[2]*1 + unforced_clogit$coefficients[3]*1 + unforced_clogit$coefficients[4]*0 + unforced_clogit$coefficients[5]*0))/(1 + exp( unforced_clogit$coefficients[1]*1+ unforced_clogit$coefficients[2]*1 + unforced_clogit$coefficients[3]*1 + unforced_clogit$coefficients[4]*0+ unforced_clogit$coefficients[5]*0))
+p     
+
+unforced_clogit
 ```
 
 ```{r}
 #standard predictions
 all_packages_standard <- all_packages %>%
-  mutate(ASC = 1)
+  mutate(ASC = 1) %>%
+  mutate(ASC = ifelse())
 standard_predictions <- predict(standard_clogit, newdata = all_packages_standard, type = "risk", se.fit = TRUE)
 
 standard_predictions_data <- data.frame(all_packages, standard_predictions)  
@@ -299,6 +277,42 @@ write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FA
 
 
 DT::datatable(standard_predictions_data)
+
+standard_clogit
+
+p = (exp(standard_clogit$coefficients[1]*1 + standard_clogit$coefficients[2]*1 + standard_clogit$coefficients[3]*1 + standard_clogit$coefficients[4]*1 + standard_clogit$coefficients[5]*0 + standard_clogit$coefficients[6]*0))/(1 + exp( standard_clogit$coefficients[1]*1+ standard_clogit$coefficients[2]*1 + standard_clogit$coefficients[3]*1 + standard_clogit$coefficients[4]*1+ standard_clogit$coefficients[5]*0 + standard_clogit$coefficients[6]*0))
+p     
+
 ```
+
+Look at probability differences between individual attributes... i.e. holding everything else constant. Compare it to most likely package for GFW to implement... Non Anonymous, Public Ownership, and SOS button.
+
+```{r}
+base_package = 14
+
+change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 13]
+change_sos_no # adding an sos button increases prbability by ~64 percent
+
+change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == 2] - standard_predictions_data$level_probs1[standard_predictions_data$package == 1]
+
+change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == 10] - standard_predictions_data$level_probs1[standard_predictions_data$package == 9]
+
+change_sos_no <- standard_predictions_data$level_probs1[standard_predictions_data$package == 6] - standard_predictions_data$level_probs1[standard_predictions_data$package == 5]
+
+change_anon_yes <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 16]
+change_anon_yes # making it non anonymous increases by ~2.5 percent
+
+change_own_to_industry <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 6]
+change_own_to_industry #making it from public to industry decreases by ~21.7 percent 
+
+change_own_to_fishermen <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 2]
+change_own_to_fishermen #changing it from public to fishermen increases prob by ~14.6 percent
+
+change_own_to_government <- standard_predictions_data$level_probs1[standard_predictions_data$package == base_package] - standard_predictions_data$level_probs1[standard_predictions_data$package == 10]
+change_own_to_government #changing it from public to government increases prob by ~13.19 percent
+
+
+```
+
 
 
