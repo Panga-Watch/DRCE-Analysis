@@ -43,27 +43,42 @@ library(here)
 library(kableExtra)
 #library(support.CEs)
 #library("mlogit")
+
+master_survey <- read_csv("raw/master_survey_resp.csv") %>%
+  select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -last_commends, -photo)
 ```
 
 Standard opt-out model (Model I)
 ```{r}
-standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") 
+standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
+## Now we have ALL of the characteristics matched with each survey respondent and the correct data structure to plug into clogit. All you have to do is add whatever characteristic you want to the clogit function... i.e. age, years fishing, sex, village, etc... although I think you would have to add something like sos:country to determine the effect that country has on the sos attribute... meaning we would have to do this for every attribute for every characteristic if we use clogit... see below.
 
-standard_clogit<-clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + own.public+strata(STR), data=standard_opt_out)
+## Also could be useful to ask JM how to sus out the marginal effect on the probability of adoption by changing one attribute... still unclear how to do this to me. 
+
+standard_clogit <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + strata(STR), data=standard_opt_out)
 standard_clogit
+
+standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + sos:country + info:country + own.fisher:country  + strata(STR), data=standard_opt_out)
+standard_clogit_char_test
 
 ```
 
 Pooled (Model II)
 ```{r}
-pooled <- read_csv("int/pooled_data_fix.csv")
+pooled <- read_csv("int/pooled_data_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
 pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+strata(STR), data=pooled)
 pooled_clogit
 ```
 
 Unforced Responses (Model III)
 ```{r}
-unforced <- read_csv("int/unforced_data_fix.csv")
+unforced <- read_csv("int/unforced_data_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
 
 unforced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+strata(STR), data=unforced)
 unforced_clogit
@@ -71,7 +86,9 @@ unforced_clogit
 
 Forced Responses (Model IV)
 ```{r}
-forced <- read_csv("int/forced_data_fix.csv")
+forced <- read_csv("int/forced_data_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
 
 forced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=forced)
 forced_clogit
@@ -236,8 +253,6 @@ p
 
 unforced_clogit
 
-unforced_check <- unforced %>%
-  filter(sos == 1, info == 1, own.fisher ==1 )
 ```
 
 ```{r}
