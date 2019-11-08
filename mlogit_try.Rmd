@@ -10,7 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(mlogit)
 master_survey <- read_csv("raw/master_survey_resp.csv") %>%
-  select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -last_commends, -photo)
+  select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -last_commends, -photo) %>%
+  arrange(survey_id) %>%
+  mutate(id_probs = 1:211)
 ```
 
 ```{r}
@@ -21,14 +23,15 @@ pooled <- read_csv("int/pooled_data_fix.csv") %>%
 
 map_column <- rep(c("A","B"),length(unique(pooled$survey_id)))
 pooled_mlogit_data <- pooled %>%
-  select(-STR, -ASC, -package, -9:-12) %>%
+  select(-STR, -ASC, -9:-12) %>%
   mutate(alt = map_column,
          choiceid = survey_id,
          chid = survey_id,
          choice = ifelse(RES == 1, "TRUE", "FALSE")) %>%
   select(-RES) %>%
   rename("id" = "survey_id") %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice))
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice),
+         community = as.factor(community))
 
 pooled_mlogit_data_final <- mlogit.data(pooled_mlogit_data, shape = "long", choice = "choice", alt.levels = c(1,2), id = "id") #put data into format that can work with mlogit
 
@@ -39,10 +42,15 @@ pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own,
 m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final)
 
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
+probs <- as.data.frame(fitted(m_pooled, outcome = FALSE)) # this shows all of the predicted probabilities for each of the choices offered... 
 
-m_pooled_char <- mlogit(choice ~ sos + info + own | age + sex, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
+m_pooled_char <- mlogit(choice ~ sos + info + own |  community, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
 summary(m_pooled_char)
+
+fitted(m_pooled_char)
 ```
+
+
 
 
 
