@@ -1,0 +1,49 @@
+---
+title: "Untitled"
+author: "Panga Watch"
+date: "11/7/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(mlogit)
+master_survey <- read_csv("raw/master_survey_resp.csv") %>%
+  select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -last_commends, -photo)
+```
+
+```{r}
+pooled <- read_csv("int/pooled_data_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
+  
+
+map_column <- rep(c("A","B"),length(unique(pooled$survey_id)))
+pooled_mlogit_data <- pooled %>%
+  select(-STR, -ASC, -package, -9:-12) %>%
+  mutate(alt = map_column,
+         choiceid = survey_id,
+         chid = survey_id,
+         choice = ifelse(RES == 1, "TRUE", "FALSE")) %>%
+  select(-RES) %>%
+  rename("id" = "survey_id") %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice))
+
+pooled_mlogit_data_final <- mlogit.data(pooled_mlogit_data, shape = "long", choice = "choice", alt.levels = c(1,2), id = "id") #put data into format that can work with mlogit
+
+pooled_mlogit_data_final$choice <- c(as.logical(pooled_mlogit_data_final$choice)) #coerce choice into logical
+
+pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own, ref = 4))
+
+m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final)
+
+summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
+
+m_pooled_char <- mlogit(choice ~ sos + info + own | age + sex, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
+summary(m_pooled_char)
+```
+
+
+
+

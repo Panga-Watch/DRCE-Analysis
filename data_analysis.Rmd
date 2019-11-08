@@ -60,6 +60,15 @@ standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
 standard_clogit <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + strata(STR), data=standard_opt_out)
 standard_clogit
 
+##see how much each attribute matters? 
+1/(exp(standard_clogit$coefficients[2])/exp(sum(standard_clogit$coefficients[4:6]))) + #sos 6.3138 times more important the ownership?
+1/(exp(standard_clogit$coefficients[2])/exp(sum(standard_clogit$coefficients[3])))+  #sos 8.061414 times more important than information? 
+1/(exp(sum(standard_clogit$coefficients[4:6]))/exp(standard_clogit$coefficients[3]))  #ownership 1.218878 times more important than info?
+## dont think that is right ^^ adds up to 1.095673 and I was trying to get them to add up to 1...
+
+
+
+
 standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + sos:country + info:country + own.fisher:country  + strata(STR), data=standard_opt_out)
 standard_clogit_char_test
 
