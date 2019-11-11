@@ -372,4 +372,19 @@ standard_wtp_final <- standard_wtp %>%
 write.csv(standard_wtp_final, "int/standard_opt_out_wtp.csv", row.names = FALSE)
 ```
 
+#removing columns that are not used for analysis
+```{r}
+ms_factor<-read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE)
+
+variables<-ms_factor %>% 
+  arrange(survey_id) %>% 
+  mutate(index=1:n()) %>% 
+  select(-starts_with("other"), -starts_with("fishery_problem"), -starts_with("fishery_solution"), -starts_with("target_species"), -starts_with("text_")) %>% 
+  select(-contains("positive"), -contains("negative"), -contains("comment")) %>% 
+  select(-(1:2), -photo, -survey_type) %>% 
+  select(index, everything())
+
+write.csv(variables, "int/variables.csv", row.names = FALSE)
+  
+```
 
