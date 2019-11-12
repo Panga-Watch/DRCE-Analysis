@@ -69,7 +69,7 @@ standard_clogit
 
 
 
-standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + sos:country + info:country + own.fisher:country  + strata(STR), data=standard_opt_out)
+standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + country + age + community + strata(STR), data=standard_opt_out)
 standard_clogit_char_test
 
 ```
@@ -79,7 +79,7 @@ Pooled (Model II)
 pooled <- read_csv("int/pooled_data_fix.csv") %>%
   left_join(master_survey, by = "survey_id") %>%
   select(-noalt)
-pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+strata(STR), data=pooled)
+pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov + strata(STR), data=pooled)
 pooled_clogit
 ```
 
