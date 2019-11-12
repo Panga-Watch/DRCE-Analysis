@@ -13,6 +13,7 @@ variables <- read.csv("int/variables.csv", stringsAsFactors = TRUE)
 ```
 
 ```{r}
+# try pooled with mlogit
 pooled <- read_csv("int/pooled_data_fix.csv") %>%
   left_join(variables, by = "survey_id") %>%
   select(-noalt)
@@ -20,7 +21,7 @@ pooled <- read_csv("int/pooled_data_fix.csv") %>%
 
 map_column <- rep(c("A","B"),length(unique(pooled$survey_id)))
 pooled_mlogit_data <- pooled %>%
-  select(-STR, -ASC, -9:-12) %>%
+  select(-ASC, -9:-12) %>%
   mutate(alt = map_column,
          choiceid = survey_id,
          chid = survey_id,
@@ -41,9 +42,9 @@ m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final)
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
 fitted(m_pooled, outcome = FALSE) # this shows all of the predicted probabilities for each of the choices offered apparently... 
 
-exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = fishermen... first survey done... doesn't match the outcome of fitted()... 
+exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = 1... first survey done... doesn't match the outcome of fitted()... 
 
-m_pooled_char <- mlogit(choice ~ sos + info + own |  community, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
+m_pooled_char <- mlogit(choice ~ sos + info + own | community , pooled_mlogit_data_final) ## is this correctly adding attributes to model??
 summary(m_pooled_char)
 
 fitted(m_pooled_char)
@@ -75,6 +76,7 @@ imp <- data.frame(importance(rf))
 ```
 
 ```{r}
+## try standard with mlogit... not working
 standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
   left_join(variables, by = "survey_id") %>%
   select(-noalt, -STR.x, -STR.y)
