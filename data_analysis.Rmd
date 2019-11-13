@@ -55,19 +55,8 @@ standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
   select(-noalt)
 ## Now we have ALL of the characteristics matched with each survey respondent and the correct data structure to plug into clogit. All you have to do is add whatever characteristic you want to the clogit function... i.e. age, years fishing, sex, village, etc... although I think you would have to add something like sos:country to determine the effect that country has on the sos attribute... meaning we would have to do this for every attribute for every characteristic if we use clogit... see below.
 
-## Also could be useful to ask JM how to sus out the marginal effect on the probability of adoption by changing one attribute... still unclear how to do this to me. 
-
 standard_clogit <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + strata(STR), data=standard_opt_out)
 standard_clogit
-
-##see how much each attribute matters? 
-1/(exp(standard_clogit$coefficients[2])/exp(sum(standard_clogit$coefficients[4:6]))) + #sos 6.3138 times more important the ownership?
-1/(exp(standard_clogit$coefficients[2])/exp(sum(standard_clogit$coefficients[3])))+  #sos 8.061414 times more important than information? 
-1/(exp(sum(standard_clogit$coefficients[4:6]))/exp(standard_clogit$coefficients[3]))  #ownership 1.218878 times more important than info?
-## dont think that is right ^^ adds up to 1.095673 and I was trying to get them to add up to 1...
-
-
-
 
 standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + country + age + community + strata(STR), data=standard_opt_out)
 standard_clogit_char_test
@@ -139,8 +128,8 @@ pooled_predictions_data <- data.frame(all_packages, pooled_predictions)
 #https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
 #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
 
-# sos	1 = no, 2 = yes
-# info 	1 = non, 2 = anon
+# sos	0 = no, 1 = yes
+# info 	1 = non, 0 = anon
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
@@ -183,7 +172,7 @@ forced_predictions_data <- data.frame(all_packages, forced_predictions)
 #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
 
 # sos	0 = no, 1 = yes
-# info 	0 = non, 1 = anon
+# info 	1 = non, 0 = anon
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
@@ -225,7 +214,7 @@ unforced_predictions_data <- data.frame(all_packages, unforced_predictions)
 #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
 
 # sos	0 = no, 1 = yes
-# info 	0 = non, 1 = anon
+# info 	1 = non, 0 = anon
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
@@ -259,9 +248,6 @@ p = (exp(unforced_clogit$coefficients[1]*1 + unforced_clogit$coefficients[2]*1 +
 p     
 #0.9881482 
 
-
-unforced_clogit
-
 ```
 
 ```{r}
@@ -277,7 +263,7 @@ standard_predictions_data <- data.frame(all_packages, standard_predictions)
 #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
 
 # sos	0 = no, 1 = yes
-# info 	0 = non, 1 = anon
+# info 	1= non, 0 = anon
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
@@ -306,8 +292,6 @@ write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FA
 
 
 DT::datatable(standard_predictions_data)
-
-standard_clogit
 
 p = (exp(standard_clogit$coefficients[1]*1 + standard_clogit$coefficients[2]*1 + standard_clogit$coefficients[3]*1 + standard_clogit$coefficients[4]*1 + standard_clogit$coefficients[5]*0 + standard_clogit$coefficients[6]*0))/(1 + exp( standard_clogit$coefficients[1]*1+ standard_clogit$coefficients[2]*1 + standard_clogit$coefficients[3]*1 + standard_clogit$coefficients[4]*1+ standard_clogit$coefficients[5]*0 + standard_clogit$coefficients[6]*0))
 p     

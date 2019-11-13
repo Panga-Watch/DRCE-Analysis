@@ -13,7 +13,7 @@ variables <- read.csv("int/variables.csv", stringsAsFactors = TRUE)
 ```
 
 ```{r}
-# try pooled with mlogit
+# try mlogit with pooled
 pooled <- read_csv("int/pooled_data_fix.csv") %>%
   left_join(variables, by = "survey_id") %>%
   select(-noalt)
@@ -28,40 +28,40 @@ pooled_mlogit_data <- pooled %>%
          choice = ifelse(RES == 1, "TRUE", "FALSE")) %>%
   select(-RES) %>%
   rename("id" = "survey_id") %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice),
-         community = as.factor(community))
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice))
 
 pooled_mlogit_data_final <- mlogit.data(pooled_mlogit_data, shape = "long", choice = "choice", alt.levels = c(1,2), id = "id") #put data into format that can work with mlogit
 
-pooled_mlogit_data_final$choice <- c(as.logical(pooled_mlogit_data_final$choice)) #coerce choice into logical
+pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own, ref = 4)) # set reference level for data ownership to public access
 
-pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own, ref = 4))
-
-m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final)
+m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final) # run the model with choice experiment only. -1 removes the intercept. 
 
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
+
 fitted(m_pooled, outcome = FALSE) # this shows all of the predicted probabilities for each of the choices offered apparently... 
 
 exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = 1... first survey done... doesn't match the outcome of fitted()... 
 
-m_pooled_char <- mlogit(choice ~ sos + info + own | community , pooled_mlogit_data_final) ## is this correctly adding attributes to model??
+m_pooled_char <- mlogit(choice ~ sos + info + own | community + age +income + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
 summary(m_pooled_char)
 
 fitted(m_pooled_char)
 ```
 
 ```{r}
-## Try with the base R lm
+## Try with the base R lm like JM and JC suggested...
 
 survey_logit <- glm(choice ~ sos +  own + enforcement_village_leader + sex + gear_stationary_line + boat_motorized, family = "binomial", data = pooled_mlogit_data_final)
+
 summary(survey_logit)
+
 fitted(survey_logit)
 
 exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0)/(1 + exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0))
 ```
 
 ```{r}
-#Random forest
+#Random forest try... this is very preliminary and not correct at all.
 library(ranger)
 
 rand_forest_data <- pooled_mlogit_data_final %>%
@@ -72,17 +72,19 @@ rand_forest_data <- pooled_mlogit_data_final %>%
 rand_forest_data <- na.omit(rand_forest_data)
 
 rf <- ranger(choice ~ ., data = rand_forest_data, importance = "permutation" )
-imp <- data.frame(importance(rf))
+imp <- data.frame(importance(rf)) #supposed to be the importance of each variable. 
 ```
 
 ```{r}
-## try standard with mlogit... not working
+## try standard with mlogit... not working. See this stack overflow for how to supposedely incorporate an opt out with mlogit() : https://stackoverflow.com/questions/31355145/including-opt-out-as-alternative-specific-constant-in-r-mlogit
+
 standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
   left_join(variables, by = "survey_id") %>%
   select(-noalt, -STR.x, -STR.y)
   
 
-map_column <- rep(c("A","B", "C"),length(unique(standard_opt_out$survey_id)))
+map_column <- rep(c("A","B", "C"),length(unique(standard_opt_out$survey_id))) # make a column of A,B,C to denote the three choices offered... i.e. package A, package B, opt out.
+
 standard_mlogit_data <- standard_opt_out %>%
   select(-survey_version, -interviewer, -interviewer_Org) %>%
   mutate(alt = map_column,
@@ -93,14 +95,12 @@ standard_mlogit_data <- standard_opt_out %>%
   rename("id" = "survey_id") %>%
   mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice))
 
-standard_mlogit_data$optout <- factor(ifelse(standard_mlogit_data$alt == "C", "1", "-1"))
-
+standard_mlogit_data$optout <- factor(ifelse(standard_mlogit_data$alt == "C", "1", "-1")) # add the alternative specific constant which denotes the opt out choice
 
 standard_mlogit_data_final <- mlogit.data(standard_mlogit_data, shape = c("long"), choice = "choice", alt.var = "alt", id.var  = "id") #put data into format that can work with mlogit
 
-standard_mlogit_data_final <- within(standard_mlogit_data_final, own <- relevel(own, ref = 4))
+standard_mlogit_data_final <- within(standard_mlogit_data_final, own <- relevel(own, ref = 4)) #change reference level for ownership variable. 
 
-##not working... https://stackoverflow.com/questions/31355145/including-opt-out-as-alternative-specific-constant-in-r-mlogit
 standard_mlogit <- mlogit(choice ~sos + info + own + optout | -1 | 0, standard_mlogit_data_final)
 ```
 
