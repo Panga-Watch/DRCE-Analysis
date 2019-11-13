@@ -1,17 +1,17 @@
-"info","own","sos","level_probs1","level_se"
-"Anon","Fishers","Yes",0.839896008818214,0.392876392961049
-"Non-Anon","Fishers","Yes",0.838089033367434,0.364904600782251
-"Anon","Government","Yes",0.749276029126969,0.37198842303255
-"Non-Anon","Government","Yes",0.746754675598772,0.384525656942864
-"Anon","Public Access","Yes",0.711103417091434,0.265175742842981
-"Non-Anon","Public Access","Yes",0.708347610248746,0.268897569435526
-"Anon","Industry","Yes",0.533597233304449,0.273510332051615
-"Non-Anon","Industry","Yes",0.53026668759206,0.274745907910331
-"Anon","Fishers","No",0.39741260094898,0.163411055054489
-"Non-Anon","Fishers","No",0.394213620342811,0.153623603739626
-"Anon","Government","No",0.273098710423124,0.179063576773202
-"Non-Anon","Government","No",0.270451280836904,0.191032619294757
-"Anon","Public Access","No",0.2363198039489,0.137182504603246
-"Non-Anon","Public Access","No",0.233914178488461,0.144411389161043
-"Anon","Industry","No",0.125744513807362,0.123018063640855
-"Non-Anon","Industry","No",0.124281312323655,0.126904878169896
+"info","own","sos","probability (%)"
+"Anon","Fishers","Yes",83.99
+"Non-Anon","Fishers","Yes",83.81
+"Anon","Government","Yes",74.93
+"Non-Anon","Government","Yes",74.68
+"Anon","Public Access","Yes",71.11
+"Non-Anon","Public Access","Yes",70.83
+"Anon","Industry","Yes",53.36
+"Non-Anon","Industry","Yes",53.03
+"Anon","Fishers","No",39.74
+"Non-Anon","Fishers","No",39.42
+"Anon","Government","No",27.31
+"Non-Anon","Government","No",27.05
+"Anon","Public Access","No",23.63
+"Non-Anon","Public Access","No",23.39
+"Anon","Industry","No",12.57
+"Non-Anon","Industry","No",12.43

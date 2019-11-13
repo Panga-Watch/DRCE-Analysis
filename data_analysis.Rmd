@@ -44,8 +44,8 @@ library(kableExtra)
 #library(support.CEs)
 #library("mlogit")
 
-master_survey <- read_csv("raw/master_survey_resp.csv") %>%
-  select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -last_commends, -photo)
+master_survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>%
+  select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -photo)
 ```
 
 Standard opt-out model (Model I)
@@ -56,12 +56,16 @@ standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
 ## Now we have ALL of the characteristics matched with each survey respondent and the correct data structure to plug into clogit. All you have to do is add whatever characteristic you want to the clogit function... i.e. age, years fishing, sex, village, etc... although I think you would have to add something like sos:country to determine the effect that country has on the sos attribute... meaning we would have to do this for every attribute for every characteristic if we use clogit... see below.
 
 standard_clogit <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + strata(STR), data=standard_opt_out)
-standard_clogit
+summary(standard_clogit)
 
 standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + country + age + community + strata(STR), data=standard_opt_out)
 standard_clogit_char_test
 
 ```
+```{r}
+stargazer(standard_clogit)
+```
+
 
 Pooled (Model II)
 ```{r}
@@ -268,11 +272,11 @@ standard_predictions_data <- data.frame(all_packages, standard_predictions)
 #adopt : 1 = accept, 0 = decline
 
 standard_predictions_data <- standard_predictions_data %>%
-  mutate(level_probs1 = fit/(fit+ 1),
+  mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
          level_se = se.fit/(se.fit + 1)) %>%
-  select(-fit, -se.fit, -STR) %>%
-  arrange(-level_probs1) %>%
-  select(info, own, sos, level_probs1, level_se) %>%
+  select(-fit, -se.fit, -STR, -level_se) %>%
+  arrange(-`probability (%)`) %>%
+  select(info, own, sos, `probability (%)`) %>%
   mutate(info = case_when(
     info == 0 ~ "Anon",
     info == 1 ~ "Non-Anon"

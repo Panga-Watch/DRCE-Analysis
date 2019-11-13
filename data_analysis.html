@@ -9,7 +9,7 @@
 <meta name="generator" content="pandoc" />
 
 
-<meta name="author" content="Compiled on Mon Nov 4 15:50:27 2019 by gclawson" />
+<meta name="author" content="Compiled on Tue Nov 12 23:42:33 2019 by gclawson" />
 
 
 <title>Analysis</title>
@@ -338,7 +338,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">Analysis</h1>
-<h4 class="author"><em>Compiled on Mon Nov 4 15:50:27 2019 by gclawson</em></h4>
+<h4 class="author"><em>Compiled on Tue Nov 12 23:42:33 2019 by gclawson</em></h4>
 
 </div>
 
@@ -346,7 +346,6 @@ div.tocify {
 <div id="summary" class="section level2">
 <h2><span class="header-section-number">0.1</span> Summary</h2>
 <p>Mixed Logit Analysis on the DRCE conducted in Indonesia and Mexico. Split into four different models; Standard opt-out model (Model I), Pooled (Model II), Unforced Responses (Model III), and Forced Responses (Model IV).</p>
-<p>Will try to simulate both mixed logit and conditional logit models based off of this: <a href="https://cran.r-project.org/web/packages/mlogit/vignettes/c4.relaxiid.html" class="uri">https://cran.r-project.org/web/packages/mlogit/vignettes/c4.relaxiid.html</a></p>
 </div>
 <div id="data-source" class="section level2">
 <h2><span class="header-section-number">0.2</span> Data Source</h2>
@@ -365,9 +364,9 @@ div.tocify {
 <h2><span class="header-section-number">0.5</span> Format</h2>
 <p>comma separated values</p>
 <p>Standard opt-out model (Model I)</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">standard_opt_out &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/standard_opt_out.csv&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">sos =</span> <span class="kw">ifelse</span>(sos<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">info=</span><span class="kw">ifelse</span>(info<span class="op">==</span><span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">1</span>)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">own.fisher=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.industry=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.gov=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.public=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">0</span>))</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">standard_opt_out &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/standard_opt_out_fix.csv&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">left_join</span>(master_survey, <span class="dt">by =</span> <span class="st">&quot;survey_id&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>noalt)</code></pre></div>
 <pre><code>## Parsed with column specification:
 ## cols(
 ##   survey_id = col_integer(),
@@ -378,75 +377,104 @@ div.tocify {
 ##   sos = col_integer(),
 ##   info = col_integer(),
 ##   own = col_integer(),
-##   noalt = col_integer()
-## )</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">write.csv</span>(standard_opt_out, <span class="st">&quot;int/standard_opt_out_fix.csv&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
-
-standard_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>ASC<span class="op">+</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov<span class="op">+</span>own.public<span class="op">+</span><span class="kw">strata</span>(STR), <span class="dt">data=</span>standard_opt_out)
-standard_clogit</code></pre></div>
-<pre><code>## Call:
-## clogit(RES ~ ASC + sos + info + own.fisher + own.industry + own.gov + 
-##     own.public + strata(STR), data = standard_opt_out)
-## 
-##                 coef exp(coef) se(coef)      z        p
-## ASC               NA        NA   0.0000     NA       NA
-## sos           3.2019   24.5797   0.4834  6.624 3.49e-11
-## info          0.1345    1.1439   0.5147  0.261   0.7939
-## own.fisher    1.0870    2.9653   0.5256  2.068   0.0386
-## own.industry -0.9746    0.3774   0.7779 -1.253   0.2103
-## own.gov       0.9339    2.5444   0.9579  0.975   0.3296
-## own.public        NA        NA   0.0000     NA       NA
-## 
-## Likelihood ratio test=148.5  on 5 df, p=&lt; 2.2e-16
-## n= 633, number of events= 211</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">standard_opt_out_wtp &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/standard_opt_out_wtp.csv&quot;</span>) <span class="op">%&gt;%</span>
-<span class="st">    </span><span class="kw">mutate</span>(<span class="dt">sos =</span> <span class="kw">as.factor</span>(sos), <span class="dt">info =</span> <span class="kw">as.factor</span>(info), <span class="dt">own =</span> <span class="kw">as.factor</span>(own), <span class="dt">own.fisher =</span> <span class="kw">as.factor</span>(own.fisher), <span class="dt">own.industry =</span> <span class="kw">as.factor</span>(own.industry), <span class="dt">own.gov =</span> <span class="kw">as.factor</span>(own.gov), <span class="dt">own.public =</span> <span class="kw">as.factor</span>(own.public)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">arrange</span>(survey_id)</code></pre></div>
-<pre><code>## Parsed with column specification:
-## cols(
-##   survey_id = col_integer(),
-##   country = col_character(),
-##   package = col_integer(),
-##   wtp = col_integer(),
-##   sos = col_integer(),
-##   info = col_integer(),
-##   own = col_integer(),
+##   noalt = col_integer(),
 ##   own.fisher = col_integer(),
 ##   own.industry = col_integer(),
 ##   own.gov = col_integer(),
-##   own.public = col_integer(),
-##   STR = col_integer(),
-##   RES = col_integer(),
-##   ASC = col_integer(),
-##   noalt = col_integer()
+##   own.public = col_integer()
 ## )</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">standard_wtp_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>ASC<span class="op">+</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov<span class="op">+</span>own.public <span class="op">+</span>wtp<span class="op">+</span><span class="kw">strata</span>(STR), <span class="dt">data=</span>standard_opt_out_wtp)</code></pre></div>
-<pre><code>## Warning in fitter(X, Y, strats, offset, init, control, weights = weights, :
-## Ran out of iterations and did not converge</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">standard_wtp_clogit</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">## Now we have ALL of the characteristics matched with each survey respondent and the correct data structure to plug into clogit. All you have to do is add whatever characteristic you want to the clogit function... i.e. age, years fishing, sex, village, etc... although I think you would have to add something like sos:country to determine the effect that country has on the sos attribute... meaning we would have to do this for every attribute for every characteristic if we use clogit... see below.
+
+standard_clogit &lt;-<span class="st"> </span><span class="kw">clogit</span>(RES<span class="op">~</span>ASC<span class="op">+</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov <span class="op">+</span><span class="st"> </span><span class="kw">strata</span>(STR), <span class="dt">data=</span>standard_opt_out)
+standard_clogit</code></pre></div>
 <pre><code>## Call:
 ## clogit(RES ~ ASC + sos + info + own.fisher + own.industry + own.gov + 
-##     own.public + wtp + strata(STR), data = standard_opt_out_wtp)
+##     strata(STR), data = standard_opt_out)
 ## 
-##                    coef exp(coef)  se(coef)     z     p
-## ASC           0.000e+00 1.000e+00 0.000e+00    NA    NA
-## sos1          3.005e+01 1.124e+13 2.274e+03 0.013 0.989
-## info1         1.368e+01 8.707e+05 9.331e+02 0.015 0.988
-## own.fisher1   2.936e+01 5.619e+12 2.274e+03 0.013 0.990
-## own.industry1 1.750e+00 5.757e+00 2.329e+03 0.001 0.999
-## own.gov1      1.636e+01 1.273e+07 4.571e+03 0.004 0.997
-## own.public1   0.000e+00 1.000e+00 0.000e+00    NA    NA
-## wtp           1.146e+01 9.519e+04 4.588e+02 0.025 0.980
+##                  coef exp(coef) se(coef)      z        p
+## ASC          -0.70185   0.49567  0.37789 -1.857   0.0633
+## sos           2.07371   7.95430  0.25673  8.077 6.61e-16
+## info         -0.01338   0.98671  0.25557 -0.052   0.9583
+## own.fisher    0.75671   2.13124  0.33914  2.231   0.0257
+## own.industry -0.76616   0.46480  0.40393 -1.897   0.0579
+## own.gov       0.19401   1.21410  0.39432  0.492   0.6227
 ## 
-## Likelihood ratio test=230.5  on 8 df, p=&lt; 2.2e-16
+## Likelihood ratio test=135.2  on 6 df, p=&lt; 2.2e-16
 ## n= 633, number of events= 211</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># mwtp(output = standard_opt_out_wtp, monetary.variables = c(&quot;wtp&quot;), nonmonetary.variables =</span>
-<span class="co">#  c(&quot;sos&quot;, &quot;info&quot;, &quot;own.fisher&quot;, &quot;own.industry&quot;, &quot;own.gov&quot;, &quot;own.public&quot;),</span>
-<span class="co">#  percentile.points = c(5, 95), seed = 987)</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">standard_clogit_char_test &lt;-<span class="st"> </span><span class="kw">clogit</span>(RES<span class="op">~</span>ASC<span class="op">+</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov <span class="op">+</span><span class="st"> </span>country <span class="op">+</span><span class="st"> </span>age <span class="op">+</span><span class="st"> </span>community <span class="op">+</span><span class="st"> </span><span class="kw">strata</span>(STR), <span class="dt">data=</span>standard_opt_out)
+standard_clogit_char_test</code></pre></div>
+<pre><code>## Call:
+## clogit(RES ~ ASC + sos + info + own.fisher + own.industry + own.gov + 
+##     country + age + community + strata(STR), data = standard_opt_out)
+## 
+##                  coef exp(coef) se(coef)      z        p
+## ASC          -0.70185   0.49567  0.37789 -1.857   0.0633
+## sos           2.07371   7.95430  0.25673  8.077 6.61e-16
+## info         -0.01338   0.98671  0.25557 -0.052   0.9583
+## own.fisher    0.75671   2.13124  0.33914  2.231   0.0257
+## own.industry -0.76616   0.46480  0.40393 -1.897   0.0579
+## own.gov       0.19401   1.21410  0.39432  0.492   0.6227
+## countryMEX         NA        NA  0.00000     NA       NA
+## age                NA        NA  0.00000     NA       NA
+## communityJPR       NA        NA  0.00000     NA       NA
+## communityMAK       NA        NA  0.00000     NA       NA
+## communityMNC       NA        NA  0.00000     NA       NA
+## communityPSC       NA        NA  0.00000     NA       NA
+## communityRAJ       NA        NA  0.00000     NA       NA
+## communityTTN       NA        NA  0.00000     NA       NA
+## communityWKB       NA        NA  0.00000     NA       NA
+## 
+## Likelihood ratio test=135.2  on 6 df, p=&lt; 2.2e-16
+## n= 633, number of events= 211</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">stargazer</span>(standard_clogit)</code></pre></div>
+<pre><code>## 
+## % Table created by stargazer v.5.2.2 by Marek Hlavac, Harvard University. E-mail: hlavac at fas.harvard.edu
+## % Date and time: Tue, Nov 12, 2019 - 23:42:37
+## \begin{table}[!htbp] \centering 
+##   \caption{} 
+##   \label{} 
+## \begin{tabular}{@{\extracolsep{5pt}}lc} 
+## \\[-1.8ex]\hline 
+## \hline \\[-1.8ex] 
+##  &amp; \multicolumn{1}{c}{\textit{Dependent variable:}} \\ 
+## \cline{2-2} 
+## \\[-1.8ex] &amp; RES \\ 
+## \hline \\[-1.8ex] 
+##  ASC &amp; $-$0.702$^{*}$ \\ 
+##   &amp; (0.378) \\ 
+##   &amp; \\ 
+##  sos &amp; 2.074$^{***}$ \\ 
+##   &amp; (0.257) \\ 
+##   &amp; \\ 
+##  info &amp; $-$0.013 \\ 
+##   &amp; (0.256) \\ 
+##   &amp; \\ 
+##  own.fisher &amp; 0.757$^{**}$ \\ 
+##   &amp; (0.339) \\ 
+##   &amp; \\ 
+##  own.industry &amp; $-$0.766$^{*}$ \\ 
+##   &amp; (0.404) \\ 
+##   &amp; \\ 
+##  own.gov &amp; 0.194 \\ 
+##   &amp; (0.394) \\ 
+##   &amp; \\ 
+## \hline \\[-1.8ex] 
+## Observations &amp; 633 \\ 
+## R$^{2}$ &amp; 0.192 \\ 
+## Max. Possible R$^{2}$ &amp; 0.519 \\ 
+## Log Likelihood &amp; $-$164.232 \\ 
+## Wald Test &amp; 99.420$^{***}$ (df = 6) \\ 
+## LR Test &amp; 135.150$^{***}$ (df = 6) \\ 
+## Score (Logrank) Test &amp; 134.142$^{***}$ (df = 6) \\ 
+## \hline 
+## \hline \\[-1.8ex] 
+## \textit{Note:}  &amp; \multicolumn{1}{r}{$^{*}$p$&lt;$0.1; $^{**}$p$&lt;$0.05; $^{***}$p$&lt;$0.01} \\ 
+## \end{tabular} 
+## \end{table}</code></pre>
 <p>Pooled (Model II)</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">pooled &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/pooled_data.csv&quot;</span>)<span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">sos =</span> <span class="kw">ifelse</span>(sos<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">info=</span><span class="kw">ifelse</span>(info<span class="op">==</span><span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">1</span>)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">own.fisher=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.industry=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.gov=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.public=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">0</span>))</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">pooled &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/pooled_data_fix.csv&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">left_join</span>(master_survey, <span class="dt">by =</span> <span class="st">&quot;survey_id&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>noalt)</code></pre></div>
 <pre><code>## Parsed with column specification:
 ## cols(
 ##   survey_id = col_integer(),
@@ -457,15 +485,17 @@ standard_clogit</code></pre></div>
 ##   sos = col_integer(),
 ##   info = col_integer(),
 ##   own = col_integer(),
-##   noalt = col_integer()
+##   noalt = col_integer(),
+##   own.fisher = col_integer(),
+##   own.industry = col_integer(),
+##   own.gov = col_integer(),
+##   own.public = col_integer()
 ## )</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">write.csv</span>(pooled, <span class="st">&quot;int/pooled_data_fix.csv&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
-
-pooled_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov<span class="op">+</span>own.public<span class="op">+</span><span class="kw">strata</span>(STR), <span class="dt">data=</span>pooled)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">pooled_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov <span class="op">+</span><span class="st"> </span><span class="kw">strata</span>(STR), <span class="dt">data=</span>pooled)
 pooled_clogit</code></pre></div>
 <pre><code>## Call:
 ## clogit(RES ~ sos + info + own.fisher + own.industry + own.gov + 
-##     own.public + strata(STR), data = pooled)
+##     strata(STR), data = pooled)
 ## 
 ##                 coef exp(coef) se(coef)      z        p
 ## sos           2.4549   11.6448   0.3259  7.534 4.93e-14
@@ -473,14 +503,13 @@ pooled_clogit</code></pre></div>
 ## own.fisher    1.2044    3.3347   0.4280  2.814   0.0049
 ## own.industry -0.3134    0.7310   0.5867 -0.534   0.5933
 ## own.gov       1.2269    3.4107   0.7010  1.750   0.0801
-## own.public        NA        NA   0.0000     NA       NA
 ## 
 ## Likelihood ratio test=144.3  on 5 df, p=&lt; 2.2e-16
 ## n= 422, number of events= 211</code></pre>
 <p>Unforced Responses (Model III)</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">unforced &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/unforced_data.csv&quot;</span>)<span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">sos =</span> <span class="kw">ifelse</span>(sos<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">info=</span><span class="kw">ifelse</span>(info<span class="op">==</span><span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">1</span>)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">own.fisher=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.industry=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.gov=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.public=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">0</span>))</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">unforced &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/unforced_data_fix.csv&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">left_join</span>(master_survey, <span class="dt">by =</span> <span class="st">&quot;survey_id&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>noalt)</code></pre></div>
 <pre><code>## Parsed with column specification:
 ## cols(
 ##   survey_id = col_integer(),
@@ -491,15 +520,17 @@ pooled_clogit</code></pre></div>
 ##   sos = col_integer(),
 ##   info = col_integer(),
 ##   own = col_integer(),
-##   noalt = col_integer()
+##   noalt = col_integer(),
+##   own.fisher = col_integer(),
+##   own.industry = col_integer(),
+##   own.gov = col_integer(),
+##   own.public = col_integer()
 ## )</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">write.csv</span>(unforced, <span class="st">&quot;int/unforced_fix.csv&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
-
-unforced_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov<span class="op">+</span>own.public<span class="op">+</span><span class="kw">strata</span>(STR), <span class="dt">data=</span>unforced)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">unforced_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov<span class="op">+</span><span class="kw">strata</span>(STR), <span class="dt">data=</span>unforced)
 unforced_clogit</code></pre></div>
 <pre><code>## Call:
 ## clogit(RES ~ sos + info + own.fisher + own.industry + own.gov + 
-##     own.public + strata(STR), data = unforced)
+##     strata(STR), data = unforced)
 ## 
 ##                 coef exp(coef) se(coef)      z        p
 ## sos           3.2019   24.5797   0.4834  6.624 3.49e-11
@@ -507,14 +538,13 @@ unforced_clogit</code></pre></div>
 ## own.fisher    1.0870    2.9653   0.5256  2.068   0.0386
 ## own.industry -0.9746    0.3774   0.7779 -1.253   0.2103
 ## own.gov       0.9339    2.5444   0.9579  0.975   0.3296
-## own.public        NA        NA   0.0000     NA       NA
 ## 
 ## Likelihood ratio test=148.5  on 5 df, p=&lt; 2.2e-16
 ## n= 338, number of events= 169</code></pre>
 <p>Forced Responses (Model IV)</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">forced &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/forced_data.csv&quot;</span>)<span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">sos =</span> <span class="kw">ifelse</span>(sos<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">info=</span><span class="kw">ifelse</span>(info<span class="op">==</span><span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">1</span>)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">own.fisher=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.industry=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.gov=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.public=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">0</span>))</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">forced &lt;-<span class="st"> </span><span class="kw">read_csv</span>(<span class="st">&quot;int/forced_data_fix.csv&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">left_join</span>(master_survey, <span class="dt">by =</span> <span class="st">&quot;survey_id&quot;</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>noalt)</code></pre></div>
 <pre><code>## Parsed with column specification:
 ## cols(
 ##   survey_id = col_integer(),
@@ -525,11 +555,13 @@ unforced_clogit</code></pre></div>
 ##   sos = col_integer(),
 ##   info = col_integer(),
 ##   own = col_integer(),
-##   noalt = col_integer()
+##   noalt = col_integer(),
+##   own.fisher = col_integer(),
+##   own.industry = col_integer(),
+##   own.gov = col_integer(),
+##   own.public = col_integer()
 ## )</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">write.csv</span>(forced, <span class="st">&quot;int/forced_fix.csv&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
-
-forced_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov<span class="op">+</span>own.public<span class="op">+</span><span class="kw">strata</span>(STR), <span class="dt">data=</span>forced)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">forced_clogit&lt;-<span class="kw">clogit</span>(RES<span class="op">~</span>sos<span class="op">+</span>info<span class="op">+</span>own.fisher<span class="op">+</span>own.industry<span class="op">+</span>own.gov<span class="op">+</span>own.public<span class="op">+</span><span class="kw">strata</span>(STR), <span class="dt">data=</span>forced)
 forced_clogit</code></pre></div>
 <pre><code>## Call:
 ## clogit(RES ~ sos + info + own.fisher + own.industry + own.gov + 
@@ -545,37 +577,6 @@ forced_clogit</code></pre></div>
 ## 
 ## Likelihood ratio test=13.73  on 5 df, p=0.01742
 ## n= 84, number of events= 42</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(forced_clogit)</code></pre></div>
-<pre><code>## Call:
-## coxph(formula = Surv(rep(1, 84L), RES) ~ sos + info + own.fisher + 
-##     own.industry + own.gov + own.public + strata(STR), data = forced, 
-##     method = &quot;exact&quot;)
-## 
-##   n= 84, number of events= 42 
-## 
-##                 coef exp(coef) se(coef)      z Pr(&gt;|z|)  
-## sos           1.1429    3.1360   0.5224  2.188   0.0287 *
-## info         -0.6659    0.5138   0.5497 -1.211   0.2257  
-## own.fisher    1.4334    4.1929   0.8115  1.766   0.0773 .
-## own.industry  0.7665    2.1522   1.1210  0.684   0.4941  
-## own.gov       1.9929    7.3365   1.2188  1.635   0.1020  
-## own.public        NA        NA   0.0000     NA       NA  
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-##              exp(coef) exp(-coef) lower .95 upper .95
-## sos             3.1360     0.3189    1.1264     8.731
-## info            0.5138     1.9463    0.1749     1.509
-## own.fisher      4.1929     0.2385    0.8547    20.570
-## own.industry    2.1522     0.4646    0.2392    19.367
-## own.gov         7.3365     0.1363    0.6731    79.967
-## own.public          NA         NA        NA        NA
-## 
-## Concordance= 0.667  (se = 0.103 )
-## Rsquare= 0.151   (max possible= 0.5 )
-## Likelihood ratio test= 13.73  on 5 df,   p=0.02
-## Wald test            = 8.69  on 5 df,   p=0.1
-## Score (logrank) test = 11.98  on 5 df,   p=0.04</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#K = 5</span>
 <span class="co">#M = 2</span>
 
@@ -613,7 +614,7 @@ ffd </code></pre></div>
 ## 15   1    2   4
 ## 16   2    2   4</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">all_packages &lt;-<span class="st"> </span>ffd <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">STR =</span> <span class="dv">1001</span>, <span class="dt">package =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">16</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">STR =</span> <span class="dv">1001</span>) <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">sos =</span> <span class="kw">ifelse</span>(sos<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">info=</span><span class="kw">ifelse</span>(info<span class="op">==</span><span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">1</span>)) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">own.fisher=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.industry=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">2</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.gov=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">own.public=</span><span class="kw">ifelse</span>(own<span class="op">==</span><span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">0</span>)) 
 
@@ -625,8 +626,8 @@ pooled_predictions_data &lt;-<span class="st"> </span><span class="kw">data.fram
 <span class="co">#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results</span>
 <span class="co">#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model</span>
 
-<span class="co"># sos   1 = no, 2 = yes</span>
-<span class="co"># info  1 = non, 2 = anon</span>
+<span class="co"># sos   0 = no, 1 = yes</span>
+<span class="co"># info  1 = non, 0 = anon</span>
 <span class="co"># own   1 = fishers, 2 = industry, 3 = govt, 4 = public access</span>
 <span class="co">#adopt : 1 = accept, 0 = decline</span>
 
@@ -635,7 +636,7 @@ pooled_predictions_data &lt;-<span class="st"> </span>pooled_predictions_data <s
          <span class="dt">level_se =</span> se.fit<span class="op">/</span>(se.fit <span class="op">+</span><span class="st"> </span><span class="dv">1</span>)) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>fit, <span class="op">-</span>se.fit, <span class="op">-</span>STR) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">arrange</span>(<span class="op">-</span>level_probs1) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">select</span>(package, info, own, sos, level_probs1, level_se) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(info, own, sos, level_probs1, level_se) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">info =</span> <span class="kw">case_when</span>(
     info <span class="op">==</span><span class="st"> </span><span class="dv">0</span> <span class="op">~</span><span class="st"> &quot;Anon&quot;</span>,
     info <span class="op">==</span><span class="st"> </span><span class="dv">1</span> <span class="op">~</span><span class="st"> &quot;Non-Anon&quot;</span>
@@ -654,8 +655,8 @@ pooled_predictions_data &lt;-<span class="st"> </span>pooled_predictions_data <s
 <span class="kw">write.csv</span>(pooled_predictions_data, <span class="st">&quot;output/pooled_probs.csv&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
 
 DT<span class="op">::</span><span class="kw">datatable</span>(pooled_predictions_data)</code></pre></div>
-<div id="htmlwidget-8f5ccb336f3be6345b18" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-8f5ccb336f3be6345b18">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],[12,4,10,2,16,14,8,6,11,3,9,1,15,13,7,5],["Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon"],["Government","Fishers","Government","Fishers","Public Access","Public Access","Industry","Industry","Government","Fishers","Government","Fishers","Public Access","Public Access","Industry","Industry"],["Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","No","No","No","No","No","No","No"],[0.871917894163902,0.869379027687545,0.856473168338138,0.85367952983239,0.666212390497707,0.636309274438626,0.593326540383418,0.561194575985528,0.368923792328427,0.363690725561374,0.338819515048328,0.333787609502293,0.14632047016761,0.130620972312455,0.111340019664445,0.0989586835413901],[0.640293771772594,0.500363900419051,0.635458967155159,0.447791702345145,0.251139345141928,0.283216970773668,0.399233849223108,0.387456719711101,0.291103855214099,0.184231007035395,0.293663005859281,0.143853188751285,0.12202911165136,0.130786358100882,0.144131841257759,0.140076999658723]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>package<\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>level_probs1<\/th>\n      <th>level_se<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,5,6]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-9f4251ac48b82f977abc" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-9f4251ac48b82f977abc">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],["Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon"],["Government","Fishers","Government","Fishers","Public Access","Public Access","Industry","Industry","Government","Fishers","Government","Fishers","Public Access","Public Access","Industry","Industry"],["Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","No","No","No","No","No","No","No"],[0.871917894163902,0.869379027687545,0.856473168338138,0.85367952983239,0.666212390497707,0.636309274438626,0.593326540383418,0.561194575985528,0.368923792328427,0.363690725561374,0.338819515048328,0.333787609502293,0.14632047016761,0.130620972312455,0.111340019664445,0.0989586835413901],[0.640293771772594,0.500363900419051,0.635458967155159,0.447791702345145,0.251139345141928,0.283216970773668,0.399233849223108,0.387456719711101,0.291103855214099,0.184231007035395,0.293663005859281,0.143853188751285,0.12202911165136,0.130786358100882,0.144131841257759,0.140076999658723]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>level_probs1<\/th>\n      <th>level_se<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[4,5]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#forced predictions </span>
 
 forced_predictions &lt;-<span class="st"> </span><span class="kw">predict</span>(forced_clogit, <span class="dt">newdata =</span> all_packages, <span class="dt">type =</span> <span class="st">&quot;risk&quot;</span>, <span class="dt">se.fit =</span> <span class="ot">TRUE</span>)
@@ -667,7 +668,7 @@ forced_predictions_data &lt;-<span class="st"> </span><span class="kw">data.fram
 <span class="co">#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model</span>
 
 <span class="co"># sos   0 = no, 1 = yes</span>
-<span class="co"># info  0 = non, 1 = anon</span>
+<span class="co"># info  1 = non, 0 = anon</span>
 <span class="co"># own   1 = fishers, 2 = industry, 3 = govt, 4 = public access</span>
 <span class="co">#adopt : 1 = accept, 0 = decline</span>
 
@@ -676,7 +677,7 @@ forced_predictions_data &lt;-<span class="st"> </span>forced_predictions_data <s
          <span class="dt">level_se =</span> se.fit<span class="op">/</span>(se.fit <span class="op">+</span><span class="st"> </span><span class="dv">1</span>)) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>fit, <span class="op">-</span>se.fit, <span class="op">-</span>STR) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">arrange</span>(<span class="op">-</span>level_probs1) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">select</span>(package, info, own, sos, level_probs1, level_se) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(info, own, sos, level_probs1, level_se) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">info =</span> <span class="kw">case_when</span>(
     info <span class="op">==</span><span class="st"> </span><span class="dv">0</span> <span class="op">~</span><span class="st"> &quot;Anon&quot;</span>,
     info <span class="op">==</span><span class="st"> </span><span class="dv">1</span> <span class="op">~</span><span class="st"> &quot;Non-Anon&quot;</span>
@@ -695,8 +696,8 @@ forced_predictions_data &lt;-<span class="st"> </span>forced_predictions_data <s
 <span class="kw">write.csv</span>(forced_predictions_data, <span class="st">&quot;output/forced_probs.csv&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
 
 DT<span class="op">::</span><span class="kw">datatable</span>(forced_predictions_data)</code></pre></div>
-<div id="htmlwidget-1ad728e6f3738fb910f0" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-1ad728e6f3738fb910f0">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],[12,4,10,11,2,8,3,9,6,16,1,7,14,5,15,13],["Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon"],["Government","Fishers","Government","Government","Fishers","Industry","Fishers","Government","Industry","Public Access","Fishers","Industry","Public Access","Industry","Public Access","Public Access"],["Yes","Yes","Yes","No","Yes","Yes","No","No","Yes","Yes","No","No","Yes","No","No","No"],[0.89849209603668,0.834949193065248,0.819752298739403,0.738396053434324,0.722161037545827,0.721962375889163,0.617319178415374,0.591878773953826,0.571581250084117,0.5467941889366,0.4532058110634,0.452960515001973,0.382680821584626,0.298463125348949,0.277838962454173,0.165050806934752],[0.77842112114491,0.611200456686747,0.703108916394581,0.608400256938638,0.481833411409833,0.629239745056707,0.390014835990403,0.511407654658489,0.537029493848685,0.304552287672704,0.266307340108803,0.427701041117968,0.283851816714217,0.342026346284474,0.263490496415078,0.237079836781254]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>package<\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>level_probs1<\/th>\n      <th>level_se<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,5,6]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-a4caa8e1bacf67db92f8" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-a4caa8e1bacf67db92f8">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],["Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Non-Anon","Anon","Non-Anon"],["Government","Fishers","Government","Government","Fishers","Industry","Fishers","Government","Industry","Public Access","Fishers","Industry","Public Access","Industry","Public Access","Public Access"],["Yes","Yes","Yes","No","Yes","Yes","No","No","Yes","Yes","No","No","Yes","No","No","No"],[0.89849209603668,0.834949193065248,0.819752298739403,0.738396053434324,0.722161037545827,0.721962375889163,0.617319178415374,0.591878773953826,0.571581250084117,0.5467941889366,0.4532058110634,0.452960515001973,0.382680821584626,0.298463125348949,0.277838962454173,0.165050806934752],[0.77842112114491,0.611200456686747,0.703108916394581,0.608400256938638,0.481833411409833,0.629239745056707,0.390014835990403,0.511407654658489,0.537029493848685,0.304552287672704,0.266307340108803,0.427701041117968,0.283851816714217,0.342026346284474,0.263490496415078,0.237079836781254]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>level_probs1<\/th>\n      <th>level_se<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[4,5]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#unforced predictions </span>
 
 unforced_predictions &lt;-<span class="st"> </span><span class="kw">predict</span>(unforced_clogit, <span class="dt">newdata =</span> all_packages, <span class="dt">type =</span> <span class="st">&quot;risk&quot;</span>, <span class="dt">se.fit =</span> <span class="ot">TRUE</span>)
@@ -708,7 +709,7 @@ unforced_predictions_data &lt;-<span class="st"> </span><span class="kw">data.fr
 <span class="co">#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model</span>
 
 <span class="co"># sos   0 = no, 1 = yes</span>
-<span class="co"># info  0 = non, 1 = anon</span>
+<span class="co"># info  1 = non, 0 = anon</span>
 <span class="co"># own   1 = fishers, 2 = industry, 3 = govt, 4 = public access</span>
 <span class="co">#adopt : 1 = accept, 0 = decline</span>
 
@@ -717,7 +718,7 @@ unforced_predictions_data &lt;-<span class="st"> </span>unforced_predictions_dat
          <span class="dt">level_se =</span> se.fit<span class="op">/</span>(se.fit <span class="op">+</span><span class="st"> </span><span class="dv">1</span>)) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>fit, <span class="op">-</span>se.fit, <span class="op">-</span>STR) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">arrange</span>(<span class="op">-</span>level_probs1) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">select</span>(package, info, own, sos, level_probs1, level_se) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(info, own, sos, level_probs1, level_se) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">info =</span> <span class="kw">case_when</span>(
     info <span class="op">==</span><span class="st"> </span><span class="dv">0</span> <span class="op">~</span><span class="st"> &quot;Anon&quot;</span>,
     info <span class="op">==</span><span class="st"> </span><span class="dv">1</span> <span class="op">~</span><span class="st"> &quot;Non-Anon&quot;</span>
@@ -736,11 +737,18 @@ unforced_predictions_data &lt;-<span class="st"> </span>unforced_predictions_dat
 <span class="kw">write.csv</span>(unforced_predictions_data, <span class="st">&quot;output/unforced_probs.csv&quot;</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
 
 DT<span class="op">::</span><span class="kw">datatable</span>(unforced_predictions_data)</code></pre></div>
-<div id="htmlwidget-e4cb425afe84781cf720" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-e4cb425afe84781cf720">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],[2,4,10,12,14,16,6,8,1,3,9,11,13,15,5,7],["Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon"],["Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry","Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry"],["Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","No","No","No","No","No","No","No"],[0.749885238624746,0.723827988715794,0.720090735532711,0.692203532014873,0.502758505694102,0.469180045410565,0.276172011284206,0.250114761375254,0.108716417039885,0.0963556108201532,0.0947466442251944,0.0838247872420495,0.0395101419780376,0.0347114835161598,0.0152854555408583,0.0133879681247565],[0.386340733177431,0.407648844070666,0.549336582924199,0.473377154583075,0.400331608292121,0.370726077384745,0.207967043715535,0.173543291845511,0.169531152090589,0.181632628202677,0.18612160871061,0.152376788065682,0.154961422665129,0.148155474143312,0.0701531036789057,0.0678153351758109]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>package<\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>level_probs1<\/th>\n      <th>level_se<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,5,6]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-54174c6254e00aff1681" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-54174c6254e00aff1681">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],["Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon"],["Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry","Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry"],["Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","No","No","No","No","No","No","No"],[0.749885238624746,0.723827988715794,0.720090735532711,0.692203532014873,0.502758505694102,0.469180045410565,0.276172011284206,0.250114761375254,0.108716417039885,0.0963556108201532,0.0947466442251944,0.0838247872420495,0.0395101419780376,0.0347114835161598,0.0152854555408583,0.0133879681247565],[0.386340733177431,0.407648844070666,0.549336582924199,0.473377154583075,0.400331608292121,0.370726077384745,0.207967043715535,0.173543291845511,0.169531152090589,0.181632628202677,0.18612160871061,0.152376788065682,0.154961422665129,0.148155474143312,0.0701531036789057,0.0678153351758109]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>level_probs1<\/th>\n      <th>level_se<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[4,5]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#0.9881482 </span>
+
+p =<span class="st"> </span>(<span class="kw">exp</span>(unforced_clogit<span class="op">$</span>coefficients[<span class="dv">1</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">2</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">3</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">4</span>]<span class="op">*</span><span class="dv">0</span> <span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">5</span>]<span class="op">*</span><span class="dv">0</span>))<span class="op">/</span>(<span class="dv">1</span> <span class="op">+</span><span class="st"> </span><span class="kw">exp</span>( unforced_clogit<span class="op">$</span>coefficients[<span class="dv">1</span>]<span class="op">*</span><span class="dv">1</span><span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">2</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">3</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">4</span>]<span class="op">*</span><span class="dv">0</span><span class="op">+</span><span class="st"> </span>unforced_clogit<span class="op">$</span>coefficients[<span class="dv">5</span>]<span class="op">*</span><span class="dv">0</span>))
+p     </code></pre></div>
+<pre><code>##       sos 
+## 0.9881482</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#0.9881482 </span></code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#standard predictions</span>
 all_packages_standard &lt;-<span class="st"> </span>all_packages <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">ASC =</span> <span class="dv">1</span>)
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">ASC =</span> <span class="dv">1</span>) 
 standard_predictions &lt;-<span class="st"> </span><span class="kw">predict</span>(standard_clogit, <span class="dt">newdata =</span> all_packages_standard, <span class="dt">type =</span> <span class="st">&quot;risk&quot;</span>, <span class="dt">se.fit =</span> <span class="ot">TRUE</span>)
 
 standard_predictions_data &lt;-<span class="st"> </span><span class="kw">data.frame</span>(all_packages, standard_predictions)  
@@ -750,16 +758,16 @@ standard_predictions_data &lt;-<span class="st"> </span><span class="kw">data.fr
 <span class="co">#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model</span>
 
 <span class="co"># sos   0 = no, 1 = yes</span>
-<span class="co"># info  0 = non, 1 = anon</span>
+<span class="co"># info  1= non, 0 = anon</span>
 <span class="co"># own   1 = fishers, 2 = industry, 3 = govt, 4 = public access</span>
 <span class="co">#adopt : 1 = accept, 0 = decline</span>
 
 standard_predictions_data &lt;-<span class="st"> </span>standard_predictions_data <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">level_probs1 =</span> fit<span class="op">/</span>(fit<span class="op">+</span><span class="st"> </span><span class="dv">1</span>),
+<span class="st">  </span><span class="kw">mutate</span>(<span class="st">`</span><span class="dt">probability (%)</span><span class="st">`</span> =<span class="st"> </span><span class="kw">round</span>(fit<span class="op">/</span>(fit<span class="op">+</span><span class="st"> </span><span class="dv">1</span>),<span class="dv">4</span>)<span class="op">*</span><span class="dv">100</span>,
          <span class="dt">level_se =</span> se.fit<span class="op">/</span>(se.fit <span class="op">+</span><span class="st"> </span><span class="dv">1</span>)) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>fit, <span class="op">-</span>se.fit, <span class="op">-</span>STR) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">arrange</span>(<span class="op">-</span>level_probs1) <span class="op">%&gt;%</span>
-<span class="st">  </span><span class="kw">select</span>(package, info, own, sos, level_probs1, level_se) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>fit, <span class="op">-</span>se.fit, <span class="op">-</span>STR, <span class="op">-</span>level_se) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">arrange</span>(<span class="op">-</span><span class="st">`</span><span class="dt">probability (%)</span><span class="st">`</span>) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">select</span>(info, own, sos, <span class="st">`</span><span class="dt">probability (%)</span><span class="st">`</span>) <span class="op">%&gt;%</span>
 <span class="st">  </span><span class="kw">mutate</span>(<span class="dt">info =</span> <span class="kw">case_when</span>(
     info <span class="op">==</span><span class="st"> </span><span class="dv">0</span> <span class="op">~</span><span class="st"> &quot;Anon&quot;</span>,
     info <span class="op">==</span><span class="st"> </span><span class="dv">1</span> <span class="op">~</span><span class="st"> &quot;Non-Anon&quot;</span>
@@ -779,8 +787,13 @@ standard_predictions_data &lt;-<span class="st"> </span>standard_predictions_dat
 
 
 DT<span class="op">::</span><span class="kw">datatable</span>(standard_predictions_data)</code></pre></div>
-<div id="htmlwidget-225161b71d41bd47c133" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-225161b71d41bd47c133">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],[2,4,10,12,14,16,6,8,1,3,9,11,13,15,5,7],["Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon"],["Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry","Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry"],["Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","No","No","No","No","No","No","No"],[0.901293343564436,0.888668095737686,0.886812697352122,0.872597092141176,0.754861736163227,0.729135672823296,0.537466686183762,0.503919357637888,0.270864327176704,0.245138263836773,0.241709428438791,0.217924808740537,0.111331904262314,0.098706656435564,0.045141034305119,0.0396867403279268],[0.591344141082031,0.581419450734871,0.749136551561974,0.71101058847461,0.435954440921959,0.352171609028432,0.461965873986847,0.427702388645954,0.168016696389262,0.200638341620581,0.325605357739284,0.281109449502086,0.148223253371122,0.136796786172514,0.132264644311535,0.12330520588005]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>package<\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>level_probs1<\/th>\n      <th>level_se<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,5,6]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-64bac85fcdc620d29cfa" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-64bac85fcdc620d29cfa">{"x":{"filter":"none","data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"],["Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon","Anon","Non-Anon"],["Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry","Fishers","Fishers","Government","Government","Public Access","Public Access","Industry","Industry"],["Yes","Yes","Yes","Yes","Yes","Yes","Yes","Yes","No","No","No","No","No","No","No","No"],[83.99,83.81,74.93,74.68,71.11,70.83,53.36,53.03,39.74,39.42,27.31,27.05,23.63,23.39,12.57,12.43]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>info<\/th>\n      <th>own<\/th>\n      <th>sos<\/th>\n      <th>probability (%)<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":4},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">p =<span class="st"> </span>(<span class="kw">exp</span>(standard_clogit<span class="op">$</span>coefficients[<span class="dv">1</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">2</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">3</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">4</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">5</span>]<span class="op">*</span><span class="dv">0</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">6</span>]<span class="op">*</span><span class="dv">0</span>))<span class="op">/</span>(<span class="dv">1</span> <span class="op">+</span><span class="st"> </span><span class="kw">exp</span>( standard_clogit<span class="op">$</span>coefficients[<span class="dv">1</span>]<span class="op">*</span><span class="dv">1</span><span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">2</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">3</span>]<span class="op">*</span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">4</span>]<span class="op">*</span><span class="dv">1</span><span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">5</span>]<span class="op">*</span><span class="dv">0</span> <span class="op">+</span><span class="st"> </span>standard_clogit<span class="op">$</span>coefficients[<span class="dv">6</span>]<span class="op">*</span><span class="dv">0</span>))
+p     </code></pre></div>
+<pre><code>##       ASC 
+## 0.8923711</code></pre>
+<p>Look at probability differences between individual attributes… i.e. holding everything else constant. Compare it to most likely package for GFW to implement… Non Anonymous, Public Ownership, and SOS button.</p>
 </div>
 
 
