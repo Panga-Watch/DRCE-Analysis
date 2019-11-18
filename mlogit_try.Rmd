@@ -30,7 +30,7 @@ pooled_mlogit_data <- pooled %>%
   rename("id" = "survey_id") %>%
   mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice))
 
-pooled_mlogit_data_final <- mlogit.data(pooled_mlogit_data, shape = "long", choice = "choice", alt.levels = c(1,2), id = "id") #put data into format that can work with mlogit
+pooled_mlogit_data_final <- mlogit.data(pooled_mlogit_data, shape = "long", choice = "choice", alt.var = "alt", id = "id") #put data into format that can work with mlogit
 
 pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own, ref = 4)) # set reference level for data ownership to public access
 
@@ -38,11 +38,32 @@ m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final) # r
 
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
 
-fitted(m_pooled, outcome = FALSE) # this shows all of the predicted probabilities for each of the choices offered apparently... 
+fitted <- data.frame(probs = fitted(m_pooled, outcome = FALSE), id_fit = 1:211, lin_pred = m_pooled$linpred) # this shows all of the predicted probabilities for each of the choices offered apparently... 
+fitted_1 <- fitted %>%
+  select(id_fit, probs = probs.A, lin_pred = lin_pred.A)
+fitted_2 <- fitted %>%
+  select(id_fit, probs = probs.B, lin_pred = lin_pred.B)
+
+fitted_join <- rbind(fitted_1, fitted_2) %>%
+  arrange(id_fit)
+
+new <- pooled_mlogit_data %>%
+  select(package, STR.y, info, sos, own)
+
+model_preds <- cbind(new, fitted_join) 
+  #mutate(lin_pred = exp(lin_pred)/(1 + exp(lin_pred))) %>%
+  #filter(package == 4) ## i think we should use lin_pred instead of fitted values for probabilities...
+
+model_preds %>%
+  filter(STR.y != id_fit) # we good
+
+preds <- model_preds %>%
+  group_by(package, info, sos, own) %>%
+  summarise(probs = mean(probs))
 
 exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = 1... first survey done... doesn't match the outcome of fitted()... 
 
-m_pooled_char <- mlogit(choice ~ sos + info + own | community + age +income + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
+m_pooled_char <- mlogit(choice ~ sos + info + own | community + age + income + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
 summary(m_pooled_char)
 
 fitted(m_pooled_char)
@@ -65,7 +86,7 @@ exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit
 library(ranger)
 
 rand_forest_data <- pooled_mlogit_data_final %>%
-  select(-1,-2, -index, -interviewer, -interviewer_Org, -alt, -choiceid, -chid, -fishing_org_members, -package_nopackage, -gear_other, tech_other, fishtech_other, -starts_with("wtp"), -starts_with("wtr")) %>%
+  select(-id, -STR.x, -STR.y, -index, -interviewer, -interviewer_Org, -alt, -choiceid, -chid, -fishing_org_members, -package_nopackage, -gear_other, tech_other, fishtech_other, -starts_with("wtp"), -starts_with("wtr")) %>%
   mutate(choice = ifelse(choice == "TRUE", 1, 0)) %>%
   mutate(choice = as.factor(choice))
 

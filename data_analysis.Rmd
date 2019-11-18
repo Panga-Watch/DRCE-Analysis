@@ -62,18 +62,30 @@ standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own
 standard_clogit_char_test
 
 ```
-```{r}
-stargazer(standard_clogit)
-```
-
 
 Pooled (Model II)
 ```{r}
 pooled <- read_csv("int/pooled_data_fix.csv") %>%
   left_join(master_survey, by = "survey_id") %>%
-  select(-noalt)
-pooled_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov + strata(STR), data=pooled)
+  select(-noalt) %>%
+  mutate(own = as.factor(own))
+
+pooled <- within(pooled, own <- relevel(own, ref = 4))
+
+pooled_clogit<-clogit(RES~sos+info+ own + strata(STR), data=pooled)
 pooled_clogit
+
+fitted_pooled <- data.frame(lin_pred = pooled_clogit$linear.predictors) # this shows all of the predicted probabilities for each of the choices offered apparently... 
+
+new_pooled <- pooled %>%
+  select(package, STR, info, sos, own)
+
+model_preds_pooled <- cbind(new_pooled, fitted_pooled) %>% 
+  mutate(probs = exp(lin_pred)/(1 + exp(lin_pred)))
+
+preds_pooled <- model_preds_pooled %>%
+  group_by(package, info, sos, own) %>%
+  summarise(probs = mean(probs))
 ```
 
 Unforced Responses (Model III)
