@@ -38,6 +38,14 @@ m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final) # r
 
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
 
+
+```
+
+Attempt to extract probabilities out of pooled model
+ - using fitted() to get fitted probability values... produces different results than just calculating ourselves by plugging into model output formula. See below. 
+ - I think the fitted() function produces fitted probabilities of a package vs another package, while just plugging into our equation, we get the probabilities based on the attribute levels and not packages.
+ 
+```{r}
 fitted <- data.frame(probs = fitted(m_pooled, outcome = FALSE), id_fit = 1:211, lin_pred = m_pooled$linpred) # this shows all of the predicted probabilities for each of the choices offered apparently... 
 fitted_1 <- fitted %>%
   select(id_fit, probs = probs.A, lin_pred = lin_pred.A)
@@ -50,8 +58,8 @@ fitted_join <- rbind(fitted_1, fitted_2) %>%
 new <- pooled_mlogit_data %>%
   select(package, STR.y, info, sos, own)
 
-model_preds <- cbind(new, fitted_join) 
-  #mutate(lin_pred = exp(lin_pred)/(1 + exp(lin_pred))) %>%
+model_preds <- cbind(new, fitted_join) %>%
+  mutate(lin_pred_probs = exp(lin_pred)/(1 + exp(lin_pred))) 
   #filter(package == 4) ## i think we should use lin_pred instead of fitted values for probabilities...
 
 model_preds %>%
@@ -59,16 +67,24 @@ model_preds %>%
 
 preds <- model_preds %>%
   group_by(package, info, sos, own) %>%
-  summarise(probs = mean(probs))
+  summarise(probs = mean(probs), lin_pred_probs = mean(lin_pred_probs))
 
 exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = 1... first survey done... doesn't match the outcome of fitted()... 
 
+
+```
+
+Attempt to add characteristics into the model 
+ - Having issues with this, because it is now giving us estimates based on the two options we gave them.  - 2:intercept is the beta value associated with each 2nd option offered I believe. 
+```{r}
 m_pooled_char <- mlogit(choice ~ sos + info + own | community + age + income + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
 summary(m_pooled_char)
 
 fitted(m_pooled_char)
 ```
 
+
+Try with just base R lm. Not sure that it makes sense to do it this way. 
 ```{r}
 ## Try with the base R lm like JM and JC suggested...
 
@@ -81,6 +97,8 @@ fitted(survey_logit)
 exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0)/(1 + exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0))
 ```
 
+
+Random Forest
 ```{r}
 #Random forest try... this is very preliminary and not correct at all.
 library(ranger)
@@ -96,6 +114,10 @@ rf <- ranger(choice ~ ., data = rand_forest_data, importance = "permutation" )
 imp <- data.frame(importance(rf)) #supposed to be the importance of each variable. 
 ```
 
+
+Try to add in the opt out to use with mlogit
+ - Has not proven to be successful yet.
+ - Idea: Could we treat the opt out as no sos, anonymous, and owned by fishermen? The "status quo". This way we could just code the mlogit as having the third option always be the status quo, instead of trying to incorporate an optout column. 
 ```{r}
 ## try standard with mlogit... not working. See this stack overflow for how to supposedely incorporate an opt out with mlogit() : https://stackoverflow.com/questions/31355145/including-opt-out-as-alternative-specific-constant-in-r-mlogit
 
