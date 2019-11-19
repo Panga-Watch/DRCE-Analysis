@@ -86,6 +86,8 @@ model_preds_pooled <- cbind(new_pooled, fitted_pooled) %>%
 preds_pooled <- model_preds_pooled %>%
   group_by(package, info, sos, own) %>%
   summarise(probs = mean(probs))
+
+write.csv(preds_pooled, "output/pooled_probs.csv", row.names = FALSE)
 ```
 
 Unforced Responses (Model III)
@@ -136,43 +138,43 @@ all_packages <- ffd %>%
   mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0)) 
 
-pooled_predictions <- predict(pooled_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
-
-pooled_predictions_data <- data.frame(all_packages, pooled_predictions)  
-
-#reasoning for predicting out a clogit model:
-#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
-#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
-
-# sos	0 = no, 1 = yes
-# info 	1 = non, 0 = anon
-# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
-#adopt : 1 = accept, 0 = decline
-
-pooled_predictions_data <- pooled_predictions_data %>%
-  mutate(level_probs1 = fit/(fit+ 1),
-         level_se = se.fit/(se.fit + 1)) %>%
-  select(-fit, -se.fit, -STR) %>%
-  arrange(-level_probs1) %>%
-  select(info, own, sos, level_probs1, level_se) %>%
-  mutate(info = case_when(
-    info == 0 ~ "Anon",
-    info == 1 ~ "Non-Anon"
-  ), 
-  own = case_when(
-   own == 1 ~ "Fishers",
-   own == 2 ~ "Industry", 
-   own == 3 ~ "Government", 
-   own == 4 ~ "Public Access"
-  ),
-  sos = case_when(
-    sos == 0 ~ "No",
-    sos == 1 ~ "Yes"
-  ))
-
-write.csv(pooled_predictions_data, "output/pooled_probs.csv", row.names = FALSE)
-
-DT::datatable(pooled_predictions_data)
+# pooled_predictions <- predict(pooled_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
+# 
+# pooled_predictions_data <- data.frame(all_packages, pooled_predictions)  
+# 
+# #reasoning for predicting out a clogit model:
+# #https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+# #https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+# 
+# # sos	0 = no, 1 = yes
+# # info 	1 = non, 0 = anon
+# # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+# #adopt : 1 = accept, 0 = decline
+# 
+# pooled_predictions_data <- pooled_predictions_data %>%
+#   mutate(level_probs1 = fit/(fit+ 1),
+#          level_se = se.fit/(se.fit + 1)) %>%
+#   select(-fit, -se.fit, -STR) %>%
+#   arrange(-level_probs1) %>%
+#   select(info, own, sos, level_probs1, level_se) %>%
+#   mutate(info = case_when(
+#     info == 0 ~ "Anon",
+#     info == 1 ~ "Non-Anon"
+#   ), 
+#   own = case_when(
+#    own == 1 ~ "Fishers",
+#    own == 2 ~ "Industry", 
+#    own == 3 ~ "Government", 
+#    own == 4 ~ "Public Access"
+#   ),
+#   sos = case_when(
+#     sos == 0 ~ "No",
+#     sos == 1 ~ "Yes"
+#   ))
+# 
+# write.csv(pooled_predictions_data, "output/pooled_probs.csv", row.names = FALSE)
+# 
+# DT::datatable(pooled_predictions_data)
 ```
 
 
