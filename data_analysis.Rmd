@@ -459,6 +459,7 @@ newnew <- left_join(preds_pooled, preds_pooled_form, by = c("info", "sos", "own"
 newnewnew <- left_join(newnew, pooled_predictions_data, by = c("info", "sos", "own")) %>%
   select(package, info, sos, own, lin_pred_probs = probs.x, probs_form = probs.y, predict_probs = level_probs1 )
 
+write.csv(newnewnew, "output/clogit_pooled_probs.csv", row.names = FALSE)
 ```
 
 **Make forced predictions data using predict()**
