@@ -452,6 +452,13 @@ final_gfw <- rbind(comp_lin_pred_gfw, comp_predict_gfw, comp_formula_gfw)
 final_combined_clogit_marg_probs <- cbind(final_reg, final_gfw)
 
 write.csv(final_combined_clogit_marg_probs, "output/unformatted_clogit_marg_probs.csv", row.names = TRUE)
+
+## combine all forms of calculating probs
+newnew <- left_join(preds_pooled, preds_pooled_form, by = c("info", "sos", "own"))
+
+newnewnew <- left_join(newnew, pooled_predictions_data, by = c("info", "sos", "own")) %>%
+  select(package, info, sos, own, lin_pred_probs = probs.x, probs_form = probs.y, predict_probs = level_probs1 )
+
 ```
 
 **Make forced predictions data using predict()**
