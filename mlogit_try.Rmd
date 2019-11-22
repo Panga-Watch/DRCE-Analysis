@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "mlogit"
 author: "Panga Watch"
 date: "11/7/2019"
 output: html_document
@@ -37,39 +37,6 @@ pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own,
 m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final) # run the model with choice experiment only. -1 removes the intercept. 
 
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
-
-
-```
-
-Attempt to extract probabilities out of pooled model
- - using fitted() to get fitted probability values... produces different results than just calculating ourselves by plugging into model output formula. See below. 
- - I think the fitted() function produces fitted probabilities of a package vs another package, while just plugging into our equation, we get the probabilities based on the attribute levels and not packages.
- 
-```{r}
-fitted <- data.frame(probs = fitted(m_pooled, outcome = FALSE), id_fit = 1:211, lin_pred = m_pooled$linpred) # this shows all of the predicted probabilities for each of the choices offered apparently... 
-fitted_1 <- fitted %>%
-  select(id_fit, probs = probs.A, lin_pred = lin_pred.A)
-fitted_2 <- fitted %>%
-  select(id_fit, probs = probs.B, lin_pred = lin_pred.B)
-
-fitted_join <- rbind(fitted_1, fitted_2) %>%
-  arrange(id_fit)
-
-new <- pooled_mlogit_data %>%
-  select(package, STR.y, info, sos, own)
-
-model_preds <- cbind(new, fitted_join) %>%
-  mutate(lin_pred_probs = exp(lin_pred)/(1 + exp(lin_pred))) 
-  #filter(package == 4) ## i think we should use lin_pred instead of fitted values for probabilities...
-
-model_preds %>%
-  filter(STR.y != id_fit) # we good
-
-preds <- model_preds %>%
-  group_by(package, info, sos, own) %>%
-  summarise(probs = mean(probs), lin_pred_probs = mean(lin_pred_probs))
-
-exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = 1... first survey done... doesn't match the outcome of fitted()... 
 
 
 ```
@@ -148,6 +115,220 @@ standard_mlogit <- mlogit(choice ~sos + info + own + optout | -1 | 0, standard_m
 ```
 
 
+
+Attempt to extract probabilities out of pooled model
+ - using fitted() to get fitted probability values... produces different results than just calculating ourselves by plugging into model output formula. See below. 
+ - I think the fitted() function produces fitted probabilities of a package vs another package, while just plugging into our equation, we get the probabilities based on the attribute levels and not packages.
+ - Linear predictors given by mlogit model are the same as just plugging into model. Use these instead of creating a function, since it would just be the same as clogit function that we made. 
+ 
+```{r}
+fitted <- data.frame(probs = fitted(m_pooled, outcome = FALSE), id_fit = 1:211, lin_pred = m_pooled$linpred) # this shows all of the predicted probabilities for each of the choices offered apparently... 
+fitted_1 <- fitted %>%
+  select(id_fit, probs = probs.A, lin_pred = lin_pred.A)
+fitted_2 <- fitted %>%
+  select(id_fit, probs = probs.B, lin_pred = lin_pred.B)
+
+fitted_join <- rbind(fitted_1, fitted_2) %>%
+  arrange(id_fit)
+
+new <- pooled_mlogit_data %>%
+  select(package, STR.y, info, sos, own)
+
+model_preds <- cbind(new, fitted_join) %>%
+  mutate(lin_pred_probs = exp(lin_pred)/(1 + exp(lin_pred))) 
+  #filter(package == 4) ## i think we should use lin_pred instead of fitted values for probabilities...
+
+model_preds %>%
+  filter(STR.y != id_fit) # we good
+
+preds_pooled <- model_preds %>%
+  group_by(package, info, sos, own) %>%
+  summarise(probs = mean(probs), lin_pred_probs = mean(lin_pred_probs))
+
+exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = 1... first survey done... doesn't match the outcome of fitted()... but does match output of linear predictor
+
+write.csv(preds_pooled, "output/mlogit_pooled_probs.csv", row.names = FALSE)
+
+```
+
+
+**Make pooled predictions using linear predictors given from model and calculate marginal probabilities based off of the status quo and GFW tech**
+```{r}
+
+# the status quo probability; Anonymous (info = 0), No SOS (sos = 0), Owned by fishermen (own = 1)
+(status_quo <- preds_pooled$lin_pred_probs[preds_pooled$package == 15])
+#0.7693023
+
+## Make status quo non-anonymous; Non-Anonymous (info = 1), No SOS (sos = 0), Owned by fishermen (own = 1)
+add_non_anon <- preds_pooled$lin_pred_probs[preds_pooled$package == 3]
+#0.7451011
+
+## Make status quo with SOS; Anonymous (info = 0), SOS (sos = 1), Owned by fishermen (own = 1)
+add_sos <- preds_pooled$lin_pred_probs[preds_pooled$package == 7]
+
+## Make status quo own by ind; Anonymous (info = 0), no SOS (sos = 0), Owned by industry (own = 2)
+add_own_by_ind <- preds_pooled$lin_pred_probs[preds_pooled$package == 10]
+
+## Make status quo own by gov; Anonymous (info = 0), no SOS (sos = 0), Owned by government (own = 3)
+add_own_by_gov <- preds_pooled$lin_pred_probs[preds_pooled$package == 6]
+
+## Make status quo own by public; Anonymous (info = 0), no SOS (sos = 0), Owned by public (own = 4)
+add_own_by_public <- preds_pooled$lin_pred_probs[preds_pooled$package == 5]
+
+### Adding non anon to status quo results in a 2.42011% decrease
+lin_pred_add_non_anon <-  status_quo - add_non_anon
+
+### adding sos to status quo results in a 20.559205227% increase
+lin_pred_add_sos <- status_quo - add_sos
+
+### adding industry ownership results in a 34.70097% decrease
+lin_pred_add_ind <- status_quo - add_own_by_ind
+
+### adding government ownership results in a 0.3976773% increase
+lin_pred_add_gov <- status_quo - add_own_by_gov
+
+### adding public access results in a 26.93022% decrease
+lin_pred_add_public <- status_quo - add_own_by_public
+
+
+# the status quo GFW probability; Non-Anonymous (info = 1), SOS (sos = 1), Public access (own = 4)
+GFW_prob <- preds_pooled$lin_pred_probs[preds_pooled$package == 11]
+#0.91077
+
+# GFW probabilty with anonymous; Anonymous (info = 0), SOS (sos = 1), Public (own = 4)
+add_anon_GFW <- preds_pooled$lin_pred_probs[preds_pooled$package == 4]
+
+# GFW probabilty with no SOS; non Anonymous (info = 1), no SOS (sos = 0), Public (own = 4)
+add_no_sos_GFW <- preds_pooled$lin_pred_probs[preds_pooled$package == 8]
+
+# GFW probabilty owned by gov; non Anonymous (info = 1), SOS (sos = 1), government (own = 3)
+add_gov_GFW <- preds_pooled$lin_pred_probs[preds_pooled$package == 2]
+
+# GFW probabilty owned by ind; non Anonymous (info = 1), SOS (sos = 1), industry (own = 2)
+add_ind_GFW <- preds_pooled$lin_pred_probs[preds_pooled$package == 13]
+
+# GFW probabilty owned by fish; non Anonymous (info = 1), SOS (sos = 1), fisher (own = 1)
+add_fisher_GFW <- preds_pooled$lin_pred_probs[preds_pooled$package == 12]
+
+### Adding anon to GFW status quo results in a 2.913529% increase
+lin_pred_GFW_add_anon <- GFW_prob - add_anon_GFW
+
+### adding no sos to GFW status quo results in a 51.47519% decrease
+lin_pred_GFW_add_no_sos <- GFW_prob- add_no_sos_GFW
+
+### adding government ownership to GFW status quo results in a 21.12957% increase
+lin_pred_GFW_add_gov <-  GFW_prob - add_gov_GFW
+
+### adding industry ownership to GFW status quo results in a 7.380583% decrease
+lin_pred_GFW_add_ind <- GFW_prob - add_ind_GFW
+
+### adding fisher ownership to GFW status quo results in a 20.86605% increase
+lin_pred_GFW_add_fisher <- GFW_prob - add_fisher_GFW
+```
+
+**Make pooled predictions using fitted() probs and calculate marginal probabilities based off of the status quo and GFW tech**
+
+```{r}
+# the status quo probability; Anonymous (info = 0), No SOS (sos = 0), Owned by fishermen (own = 1)
+(status_quo_fitted <- preds_pooled$probs[preds_pooled$package == 15])
+#0.5214112
+
+## Make status quo non-anonymous; Non-Anonymous (info = 1), No SOS (sos = 0), Owned by fishermen (own = 1)
+add_non_anon_fitted <- preds_pooled$probs[preds_pooled$package == 3]
+#0.7451011
+
+## Make status quo with SOS; Anonymous (info = 0), SOS (sos = 1), Owned by fishermen (own = 1)
+add_sos_fitted <- preds_pooled$probs[preds_pooled$package == 7]
+
+## Make status quo own by ind; Anonymous (info = 0), no SOS (sos = 0), Owned by industry (own = 2)
+add_own_by_ind_fitted <- preds_pooled$probs[preds_pooled$package == 10]
+
+## Make status quo own by gov; Anonymous (info = 0), no SOS (sos = 0), Owned by government (own = 3)
+add_own_by_gov_fitted <- preds_pooled$probs[preds_pooled$package == 6]
+
+## Make status quo own by public; Anonymous (info = 0), no SOS (sos = 0), Owned by public (own = 4)
+add_own_by_public_fitted <- preds_pooled$probs[preds_pooled$package == 5]
+
+### Adding non anon to status quo results in a 1.4% decrease
+fitted_add_non_anon <-  status_quo_fitted - add_non_anon_fitted
+
+### adding sos to status quo results in a 40.2% increase
+fitted_add_sos <- status_quo_fitted - add_sos_fitted
+
+### adding industry ownership results in a 38.8% decrease
+fitted_add_ind <- status_quo_fitted - add_own_by_ind_fitted
+
+### adding government ownership results in a 44.156% increase
+fitted_add_gov <- status_quo_fitted - add_own_by_gov_fitted
+
+### adding public access results in a 26.93022% decrease
+fitted_add_public <- status_quo_fitted - add_own_by_public_fitted
+
+
+
+# the status quo GFW probability; Non-Anonymous (info = 1), SOS (sos = 1), Public access (own = 4)
+GFW_prob_fitted <- preds_pooled$probs[preds_pooled$package == 11]
+#0.91077
+
+# GFW probabilty with anonymous; Anonymous (info = 0), SOS (sos = 1), Public (own = 4)
+add_anon_GFW_fitted <- preds_pooled$probs[preds_pooled$package == 4]
+
+# GFW probabilty with no SOS; non Anonymous (info = 1), no SOS (sos = 0), Public (own = 4)
+add_no_sos_GFW_fitted <- preds_pooled$probs[preds_pooled$package == 8]
+
+# GFW probabilty owned by gov; non Anonymous (info = 1), SOS (sos = 1), government (own = 3)
+add_gov_GFW_fitted <- preds_pooled$probs[preds_pooled$package == 2]
+
+# GFW probabilty owned by ind; non Anonymous (info = 1), SOS (sos = 1), industry (own = 2)
+add_ind_GFW_fitted <- preds_pooled$probs[preds_pooled$package == 13]
+
+# GFW probabilty owned by fish; non Anonymous (info = 1), SOS (sos = 1), fisher (own = 1)
+add_fisher_GFW_fitted <- preds_pooled$probs[preds_pooled$package == 12]
+
+### Adding anon to GFW status quo results in a 12.3255 decrease
+fitted_GFW_add_anon <- GFW_prob_fitted - add_anon_GFW_fitted
+
+### adding no sos to GFW status quo results in a 77.52181% decrease
+fitted_GFW_add_no_sos <- GFW_prob_fitted - add_no_sos_GFW_fitted
+
+### adding government ownership to GFW status quo results in a 6.8% increase
+fitted_GFW_add_gov <- GFW_prob_fitted - add_gov_GFW_fitted
+
+### adding industry ownership to GFW status quo results in a 51.748% decrease
+fitted_GFW_add_ind <- GFW_prob_fitted - add_ind_GFW_fitted
+
+### adding fisher ownership to GFW status quo results in a 2.7% decrease
+fitted_GFW_add_fisher <- GFW_prob_fitted - add_fisher_GFW_fitted
+
+```
+
+**Combine mlogit marginal probs into a dataframe**
+```{r}
+
+comp_lin_pred <- -1*100*data.frame(lin_pred_add_non_anon, lin_pred_add_sos, lin_pred_add_ind, lin_pred_add_gov, lin_pred_add_public) %>%
+  rename( "add_non_anon" = 1, "add_sos" = 2, "add_ind" = 3, "add_gov" = 4, "add_public" = 5) 
+rownames(comp_lin_pred) <- "lin_pred"
+
+comp_fitted <- -1*100*data.frame(fitted_add_non_anon, fitted_add_sos, fitted_add_ind, fitted_add_gov, fitted_add_public) %>%
+  rename( "add_non_anon" = 1, "add_sos" = 2, "add_ind" = 3, "add_gov" = 4, "add_public" = 5)
+rownames(comp_fitted) <- "fitted"
+
+comp_lin_pred_gfw <- -1*100*data.frame(lin_pred_GFW_add_anon, lin_pred_GFW_add_no_sos, lin_pred_GFW_add_anon, lin_pred_GFW_add_ind, lin_pred_GFW_add_gov) %>%
+  rename( "gfw_add_anon" = 1, "gfw_add_no_sos" = 2, "gfw_add_fisher" = 3, "gfw_add_ind" = 4, "gfw_add_gov" = 5) 
+rownames(comp_lin_pred_gfw) <- "lin_pred"
+
+comp_gfw_fitted <- -1*100*data.frame(fitted_GFW_add_anon, fitted_GFW_add_no_sos, fitted_GFW_add_anon, fitted_GFW_add_ind, fitted_GFW_add_gov) %>%
+  rename( "gfw_add_anon" = 1, "gfw_add_no_sos" = 2, "gfw_add_fisher" = 3, "gfw_add_ind" = 4, "gfw_add_gov" = 5) 
+rownames(comp_gfw_fitted) <- "fitted"
+
+final_reg <- rbind(comp_lin_pred, comp_fitted)
+
+final_gfw <- rbind(comp_lin_pred_gfw, comp_gfw_fitted)
+
+final_combined_mlogit_marg_probs <- cbind(final_reg, final_gfw)
+
+write.csv(final_combined_mlogit_marg_probs, "output/unformatted_mlogit_pooled_marg_probs.csv", row.names = TRUE)
+```
 
 
 
