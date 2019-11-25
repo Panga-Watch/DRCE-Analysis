@@ -64,13 +64,24 @@ Try with just base R lm. Not sure that it makes sense to do it this way.
 ```{r}
 ## Try with the base R lm like JM and JC suggested...
 
-survey_logit <- glm(choice ~ sos +  own + enforcement_village_leader + sex + gear_stationary_line + boat_motorized, family = "binomial", data = pooled_mlogit_data_final)
+survey_logit <- glm(choice ~ sos +  info + own , family = "binomial", data = pooled_mlogit_data_final)
 
 summary(survey_logit)
 
 fitted(survey_logit)
 
-exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0)/(1 + exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0))
+fitted <- data.frame(probs = fitted(survey_logit)) # this shows all of the predicted probabilities for each of the choices offered apparently... 
+
+new <- pooled_mlogit_data %>%
+  select(package, STR.y, info, sos, own)
+
+model_preds <- cbind(new, fitted) 
+  #filter(package == 4) ## i think we should use lin_pred instead of fitted values for probabilities...
+
+preds_pooled <- model_preds %>%
+  group_by(package, info, sos, own) %>%
+  summarise(probs = mean(probs))
+
 ```
 
 Try to add in the opt out to use with mlogit

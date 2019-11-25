@@ -41,8 +41,6 @@ library(stargazer)
 library(xtable)
 library(here)
 library(kableExtra)
-#library(support.CEs)
-#library("mlogit")
 
 master_survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>%
   select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -photo)
@@ -61,8 +59,6 @@ summary(standard_clogit)
 standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + country + age + community + strata(STR), data=standard_opt_out)
 standard_clogit_char_test
 
-standard_clogit$coefficients[1]*((exp(( standard_clogit$coefficients[2]*1 + standard_clogit$coefficients[3]*0 + standard_clogit$coefficients[4]*1 + standard_clogit$coefficients[5]*0 + standard_clogit$coefficients[6]*0)))/
-  (1 + (exp(( standard_clogit$coefficients[2]*1 + standard_clogit$coefficients[3]*0 + standard_clogit$coefficients[4]*1 + standard_clogit$coefficients[5]*0 + standard_clogit$coefficients[6]*0)))))
 ```
 
 ## Pooled (Model II)
@@ -84,15 +80,13 @@ own_2_coef <- pooled_clogit$coefficients[4]
 own_3_coef <- pooled_clogit$coefficients[5]
 
 
-own_4 <-sos_coef*1 + info_coef*1
-
-own_1_new <- own_4 + own_1_coef
-own_2_new <- own_4 + own_2_coef
-own_3_new <- own_4 + own_3_coef
-sos_new <- sos_coef + own_4
-info_new <- info_coef + own_4
- 
-
+# own_4 <-sos_coef*1 + info_coef*1
+# 
+# own_1_new <- own_4 + own_1_coef
+# own_2_new <- own_4 + own_2_coef
+# own_3_new <- own_4 + own_3_coef
+# sos_new <- sos_coef + own_4
+# info_new <- info_coef + own_4
 ```
 
 Unforced Responses (Model III)
@@ -129,7 +123,7 @@ forced_log <- logLik(forced_clogit) #-22.24721 (df=5)
 -2*(pooled_log- (unforced_log + forced_log))
 
 -2*(74.11078 - (42.90397 + 22.24721)) #17.9192
-# if this then 17.9192 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced...........
+# if this then 17.9192 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced........... need to write this up formally
 ```
 
 **Make pooled predictions using linear predictors given from model and calculate marginal probabilities based off of the status quo and GFW tech**
