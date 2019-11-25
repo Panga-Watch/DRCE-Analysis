@@ -38,6 +38,15 @@ m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final) # r
 
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
 
+actual_choose <- pooled_mlogit_data_final %>%
+  filter(choice == "TRUE") %>%
+  group_by(survey_version, choice, package, info, sos, own) %>%
+  summarise(actual_percent = 100*sum(choice)/211,
+            count = sum(choice)) ## 
+
+sum(actual_choose$actual_percent)
+sum(actual_choose$count)
+
 
 ```
 
@@ -64,24 +73,6 @@ fitted(survey_logit)
 exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0)/(1 + exp(survey_logit$coefficients[1] + survey_logit$coefficients[2]*0 + survey_logit$coefficients[3] + survey_logit$coefficients[4] +survey_logit$coefficients[5]*0 + survey_logit$coefficients[6]*0))
 ```
 
-
-Random Forest
-```{r}
-#Random forest try... this is very preliminary and not correct at all.
-library(ranger)
-
-rand_forest_data <- pooled_mlogit_data_final %>%
-  select(-id, -STR.x, -STR.y, -index, -interviewer, -interviewer_Org, -alt, -choiceid, -chid, -fishing_org_members, -package_nopackage, -gear_other, tech_other, fishtech_other, -starts_with("wtp"), -starts_with("wtr")) %>%
-  mutate(choice = ifelse(choice == "TRUE", 1, 0)) %>%
-  mutate(choice = as.factor(choice))
-
-rand_forest_data <- na.omit(rand_forest_data)
-
-rf <- ranger(choice ~ ., data = rand_forest_data, importance = "permutation" )
-imp <- data.frame(importance(rf)) #supposed to be the importance of each variable. 
-```
-
-
 Try to add in the opt out to use with mlogit
  - Has not proven to be successful yet.
  - Idea: Could we treat the opt out as no sos, anonymous, and owned by fishermen? The "status quo". This way we could just code the mlogit as having the third option always be the status quo, instead of trying to incorporate an optout column. 
@@ -96,7 +87,7 @@ standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
 map_column <- rep(c("A","B", "C"),length(unique(standard_opt_out$survey_id))) # make a column of A,B,C to denote the three choices offered... i.e. package A, package B, opt out.
 
 standard_mlogit_data <- standard_opt_out %>%
-  select(-survey_version, -interviewer, -interviewer_Org) %>%
+  select(-interviewer, -interviewer_Org) %>%
   mutate(alt = map_column,
          choiceid = survey_id,
          chid = survey_id,
@@ -111,7 +102,24 @@ standard_mlogit_data_final <- mlogit.data(standard_mlogit_data, shape = c("long"
 
 standard_mlogit_data_final <- within(standard_mlogit_data_final, own <- relevel(own, ref = 4)) #change reference level for ownership variable. 
 
-standard_mlogit <- mlogit(choice ~sos + info + own + optout | -1 | 0, standard_mlogit_data_final)
+standard_mlogit <- mlogit(choice ~sos + info + own , standard_mlogit_data_final, reflevel = 'C')
+
+actual_choose_standard <- standard_mlogit_data_final %>%
+  #filter(choice == "TRUE") %>%
+  group_by(survey_version, choice, package, info, sos, own) %>%
+  summarise(actual_percent = 100*sum(choice)/211,
+            count = sum(choice)) ## look at survey version 1... package 18 (1,1,2) was never chosen, and package 2 (1,1,3) was always chosen
+
+# 2 (1,1,3) vs 1 (0, 1, 2)
+# 2 (1,1,3) vs 8 (0, 1, 4)
+# 8 and 1 never chosen when compared to 2 
+# Tells us that in these cases respodents likely valued ownership of data over anonymity 
+
+sum(actual_choose_standard$actual_percent)
+sum(actual_choose_standard$count)
+
+packages <- read_csv("raw/packages.csv") %>%
+   mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1))
 ```
 
 
@@ -135,7 +143,7 @@ new <- pooled_mlogit_data %>%
   select(package, STR.y, info, sos, own)
 
 model_preds <- cbind(new, fitted_join) %>%
-  mutate(lin_pred_probs = exp(lin_pred)/(1 + exp(lin_pred))) 
+  mutate(lin_pred_probs = exp(lin_pred)/(1+ exp(lin_pred))) 
   #filter(package == 4) ## i think we should use lin_pred instead of fitted values for probabilities...
 
 model_preds %>%
@@ -329,6 +337,19 @@ final_combined_mlogit_marg_probs <- cbind(final_reg, final_gfw)
 
 write.csv(final_combined_mlogit_marg_probs, "output/unformatted_mlogit_pooled_marg_probs.csv", row.names = TRUE)
 ```
+
+
+```{r}
+library("mlogit")
+data("Heating", package = "mlogit")
+H <- mlogit.data(Heating, shape = "wide", choice = "depvar", varying = c(3:12))
+m <- mlogit(depvar ~ ic + oc | 0, H)
+summary(m)
+
+mi2 <- mlogit(depvar ~ oc + ic | income, H, reflevel = "hp")
+summary(mi2)
+```
+
 
 
 
