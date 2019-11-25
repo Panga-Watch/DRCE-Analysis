@@ -16,10 +16,11 @@ variables <- read.csv("int/variables.csv", stringsAsFactors = TRUE)
 # try mlogit with pooled
 pooled <- read_csv("int/pooled_data_fix.csv") %>%
   left_join(variables, by = "survey_id") %>%
-  select(-noalt)
+  select(-noalt) #read in pooled data
   
 
-map_column <- rep(c("A","B"),length(unique(pooled$survey_id)))
+map_column <- rep(c("A","B"),length(unique(pooled$survey_id))) # make a column which denotes the alternative, "A" or "B"
+
 pooled_mlogit_data <- pooled %>%
   select(-ASC, -9:-12) %>%
   mutate(alt = map_column,
@@ -42,7 +43,7 @@ actual_choose <- pooled_mlogit_data_final %>%
   filter(choice == "TRUE") %>%
   group_by(survey_version, choice, package, info, sos, own) %>%
   summarise(actual_percent = 100*sum(choice)/211,
-            count = sum(choice)) ## 
+            count = sum(choice)) ## shows actual proportion of accepted packages.
 
 sum(actual_choose$actual_percent)
 sum(actual_choose$count)
@@ -53,7 +54,7 @@ sum(actual_choose$count)
 Attempt to add characteristics into the model 
  - Having issues with this, because it is now giving us estimates based on the two options we gave them.  - 2:intercept is the beta value associated with each 2nd option offered I believe. 
 ```{r}
-m_pooled_char <- mlogit(choice ~ sos + info + own | community + age + income + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model??
+m_pooled_char <- mlogit(choice ~ sos + info + own | community + age + income + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model?? It is comparing to each alternative offerred....
 summary(m_pooled_char)
 
 fitted(m_pooled_char)
@@ -62,7 +63,7 @@ fitted(m_pooled_char)
 
 Try with just base R lm. Not sure that it makes sense to do it this way. 
 ```{r}
-## Try with the base R lm like JM and JC suggested...
+## Try with the base R lm like JM and JC suggested... Would this be a correct application of our data, just a simple binomial logistic regression? This does not take into account any of the trade offs between packages offered, simply looks at the attributes overall.
 
 survey_logit <- glm(choice ~ sos +  info + own , family = "binomial", data = pooled_mlogit_data_final)
 
