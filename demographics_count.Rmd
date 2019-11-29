@@ -2,7 +2,9 @@
 title: "Demographic Distribution"
 author: "BR"
 date: "28/11/2019"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -10,10 +12,12 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
 library(DT)
+library(kableExtra)
+
 ```
 
 
-```{r}
+```{r, include=FALSE}
 # Read in all of the raw data
 survey <- read_csv("raw/master_survey_resp.csv")
 ```
@@ -29,38 +33,59 @@ Affiliated Organization
 
 
 4. In the last 12 months, what fishing gear have you used?
-```{r}
+```{r, echo=FALSE}
+q4<-survey %>% 
+  mutate(gear_buceo = ifelse(grepl("Buceo", other_gear), 1, 0)) %>% 
+  select(starts_with("gear")) %>% 
+  na.omit() 
+
+
+oldnames4<-colnames(q4)
+newnames4 <- c("Hand Line", "Spear", "Traps", "Stationary Net",  "Mobile Net", "Stationary Line", "Other", "*Buceo")
+
 q4_response<-survey %>% 
   select(starts_with("gear")) %>% 
   na.omit() %>% 
   nrow()
 
-q4_sum<-survey %>% 
-  mutate(gear_buceo = ifelse(grepl("Buceo", other_gear), 1, 0)) %>% 
-  select(starts_with("gear")) %>% 
-  summarise_all(sum, na.rm = TRUE)
+q4_sum<-q4 %>% 
+  rename_at(vars(oldnames4), ~ newnames4)%>% 
+  summarise_all(sum, na.rm = TRUE) %>% 
+  gather(gear, Count) %>% 
+  mutate(Percent = round((Count/q4_response)*100, 0)) %>% 
+  rename(Gear = 1)
+
+q4_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
 ```
 
 
 Other
 
 5. For fishing purposes, do you own a boat, share a boat, or rent a boat from others, or do not use a boat?
-```{r}
+```{r, echo=FALSE}
 q5_response<-survey %>% 
   select(starts_with("boat_status")) %>% 
   na.omit() %>% 
   nrow()
 
+
 q5_sum<-survey %>% 
   select(starts_with("boat_status")) %>% 
   group_by(boat_status) %>% 
   count()
+
+q5_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 6. For your primary fishing vessel, please describe the boat in the following aspects:
 
 a. Length
-```{r}
+```{r, echo=FALSE}
 q6a_response<-survey %>% 
   select(starts_with("boat_length")) %>% 
   na.omit() %>% 
@@ -73,7 +98,7 @@ q6a_sum<-survey %>%
 ```
 
 b. Material
-```{r}
+```{r, echo=FALSE}
 q6b_response<-survey %>% 
   select(starts_with("boat_material")) %>% 
   na.omit() %>% 
@@ -86,7 +111,7 @@ q6b_sum<-survey %>%
 ```
 
 c. Is the boat motorized
-```{r}
+```{r, echo=FALSE}
 q6c_response<-survey %>% 
   select(starts_with("boat_motorized")) %>% 
   na.omit() %>% 
@@ -99,7 +124,7 @@ q6c_sum<-survey %>%
 ```
 
 d. Is there an onboard power/ electricity source?
-```{r}
+```{r, echo=FALSE}
 q6d_response<-survey %>% 
   select(starts_with("boat_power")) %>% 
   na.omit() %>% 
@@ -114,37 +139,78 @@ q6d_sum<-survey %>%
 Comments
 
 7. Please check all the types of technology that you use at least once a week, if any
-```{r}
-unique(unlist(strsplit(as.character(survey$other_tech), ",")))
-
-q7_response<-survey %>% 
+```{r, echo=FALSE}
+q7<-survey %>% 
   select(starts_with("tech")) %>% 
-  na.omit() %>% 
+  na.omit()
+
+q7_response <-q7 %>% 
   nrow()
 
-q7_sum<-survey %>% 
-  select(starts_with("tech")) %>% 
-  summarise_all(sum, na.rm = TRUE)
+oldnames7<-colnames(q7)
+newnames7 <- c("Smart-phone with Internetconnection",
+               "Google Maps or other GPSapps",
+               "Socialmedia (IG, FB, Twitter)",
+               "Other",
+               "None")
+
+q7_sum<-q7 %>% 
+  rename_at(vars(oldnames7), ~ newnames7)%>% 
+  summarise_all(sum, na.rm = TRUE) %>% 
+  gather(tech, Count) %>% 
+  mutate(Percent = round((Count/q7_response)*100, 0)) %>% 
+  rename(Technology = 1)
+
+q7_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
 Other
+```{r, include=FALSE}
+unique(unlist(strsplit(as.character(survey$other_tech), ",")))
+```
 
 8. Please check all the types of technology that you use or have used at some point for your fishing activity
-```{r}
-q8_response<-survey %>% 
+```{r, echo=FALSE}
+q8<-survey %>% 
   select(starts_with("fishtech")) %>% 
-  na.omit() %>% 
+  na.omit()
+
+q8_response <-q8 %>% 
   nrow()
 
-q8_sum<-survey %>% 
-  select(starts_with("fishtech")) %>% 
-  summarise_all(sum, na.rm = TRUE)
+oldnames8<-colnames(q8)
+newnames8 <- c("VHF Radio",
+               "FishFinder (Sonar)",
+               "Surveillance Camera",
+               "Catch and Data Collection App",
+               "Vessel Tracking Technology",
+               "GPS",
+               "Other",
+               "None")
 
+q8_sum<-q8 %>% 
+  rename_at(vars(oldnames8), ~ newnames8)%>% 
+  summarise_all(sum, na.rm = TRUE) %>% 
+  gather(tech, Count) %>% 
+  mutate(Percent = round((Count/q8_response)*100, 0)) %>% 
+  rename(Technology = 1)
+
+q8_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+q8_response
+```
+
+Other
+
+```{r, include=FALSE}
 q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 ```
 
-Other
 *TEXT*
 9. What type of tracking technology did you use on your vessel?
 *TEXT*
@@ -170,7 +236,7 @@ Other
 ````
 
 18. Please choose 3 benefits you want from the tracking device, if it is installed in your boat
-```{r}
+```{r, echo=FALSE}
 
 ```
 
@@ -182,17 +248,33 @@ Other
 
 
 21. What percent of the total catch (out of 100%) goes to...
-```{r}
-q21_response<-survey %>% 
+```{r, echo=FALSE}
+q21<-survey %>% 
   select(starts_with("fraction")) %>% 
-  mutate(fraction_total = rowSums(.))
+  mutate(total = rowSums(., na.rm = TRUE))
 
-  na.omit() %>% 
-  nrow()
+#calculating number of na values by row
+q21_na_count <- apply(q21, 1, function(x) sum(is.na(x)))
 
-q21_sum<-survey %>% 
-  select(starts_with("fishtech")) %>% 
-  summarise_all(sum, na.rm = TRUE)
+#5 indicated entire row was not answered (1 response)
+table(q21_na_count) #1 person did not respond to this question
+
+#show distribution of people who answered this question correctly
+table(q21$total) #202 correct responses 
+
+#clean df and calculate summary statistics 
+q21_clean<-q21 %>% 
+  filter(total == 100) %>% 
+  replace(., is.na(.), 0) %>% 
+  select(-total)
+
+summary(q21_clean, digits = 1)
+
+#Number of 0 fraction per column 
+sapply(q21_clean, function(x)length(which(x==0)))
+
+#number of non-zero fraction per column
+sapply(q21_clean, function(x)length(which(x!=0)))
 ```
 
 
@@ -200,62 +282,360 @@ q21_sum<-survey %>%
 
 Other
 22. Are you part of a fishing organization?
+```{r, echo=FALSE}
+q22_response<-survey %>% 
+  select(starts_with("fishing_organization")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q22_sum<-survey %>% 
+  select(starts_with("fishing_organization")) %>% 
+  group_by(fishing_organization) %>% 
+  count()
+```
+
+
 23. What type of organization?
+```{r, echo=FALSE}
+q23<-survey %>% 
+  filter(fishing_organization=="y") %>% 
+  select(starts_with("fishing_org_type"))
+
+#number of responses out of those who indicated they belong to a fishing organization (out of 136)
+q23_response<- q23 %>% 
+  na.omit() %>% 
+  nrow()
+
+q23_sum<-q23 %>% 
+  group_by(fishing_org_type) %>% 
+  count()
+```
+
 Other
 24. What role do you have in the organization?
+```{r, echo=FALSE}
+q24<-survey %>% 
+  filter(fishing_organization=="y") %>% 
+  select(starts_with("fishing_org_role"))
+
+#number of responses out of those who indicated they belong to a fishing organization (out of 136)
+q24_response<- q24 %>% 
+  na.omit() %>% 
+  nrow()
+
+q24_sum<-q24 %>% 
+  group_by(fishing_org_role) %>% 
+  count()
+```
+
 Other
 25. How many members does the organization have?
+```{r, echo=FALSE}
+q25<-survey %>% 
+  filter(fishing_organization=="y") %>% 
+  select(starts_with("fishing_org_members"))
+
+#number of responses out of those who indicated they belong to a fishing organization (out of 136)
+q25_response<- q25 %>% 
+  na.omit() %>% 
+  nrow()
+
+q25_sum<-q25%>% 
+  group_by(fishing_org_members) %>% 
+  count()
+```
+
 26. Who is allowed to fish for your #1 targeted fishery, ${target_species_one} ?
+
+```{r, echo=FALSE}
+q26_sum<-survey %>% 
+  select(starts_with("access")) %>% 
+  group_by(access_target_species) %>% 
+  count()
+```
+
+
 Other
 27. Please indicate what regulations exist for your #1 targeted fisherie, ${target_species_one}.
+
+```{r, echo=FALSE}
+q27_response<-survey %>% 
+  select(starts_with("restriction")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q27_sum<-survey %>% 
+  select(starts_with("restriction")) %>% 
+  summarise_all(sum, na.rm = TRUE) %>% 
+  gather(restriction, count)
+```
+
 Other
 28. Who is responsible for enforcement in your community?
+```{r, echo=FALSE}
+q28<-survey %>% 
+  select(starts_with("enforcement")) %>% 
+  select(-enforcement_interval)
+
+q28_response<-q28 %>% 
+  na.omit() %>% 
+  nrow()
+
+q28_sum<-q28 %>% 
+  summarise_all(sum, na.rm = TRUE) %>% 
+  gather(enforcement, count)
+```
+
+
 Other
 29. On average, how often are these fishing regulations enforced?
+
+```{r, echo=FALSE}
+q29_sum<-survey %>% 
+  select(enforcement_interval) %>% 
+  group_by(enforcement_interval) %>% 
+  count()
+```
+
 Other
+
 30. How severe is the punishment when a person gets caught violating the fishing regulations?
+```{r, echo=FALSE}
+q30_sum<-survey %>% 
+  select(punishment_severity) %>% 
+  group_by(punishment_severity) %>% 
+  count()
+```
+
 31. Are there any closed areas in your fishing area?
+
+```{r, echo=FALSE}
+q31_sum<-survey %>% 
+  select(mpa) %>% 
+  group_by(mpa) %>% 
+  count()
+```
+
+
 32. Wat do you think are the biggest problems your fishery faces?
 
+*TEXT*
 
 33. How do you think the problems you mentioned can be solved?
 
+*TEXT*
 
 34. Please rank the following problems from 1 to 4, where 1 has the strongest impact on your fishing activity and 4 has the least impact on your fishing activity
 
+```{r, echo=FALSE}
+q34<-survey %>% 
+  select(starts_with("rank"))
+
+q34_response<-q34 %>% 
+  na.omit() %>% 
+  nrow()
+
+q34_sum<-q34 %>% 
+  gather(rank, problem) %>% 
+  count(rank, problem) %>% 
+  spread(rank, n) %>% 
+  select(problem, rank_one, rank_two, rank_three, rank_four)
+
+#omitting observations with na value in row
+q34_sum_omit.na<-q34 %>% 
+  na.omit() %>% 
+  gather(rank, problem) %>% 
+  count(rank, problem) %>% 
+  spread(rank, n) %>% 
+  select(problem, rank_one, rank_two, rank_three, rank_four)
+```
 
 
 35. In the last few years, the current fish catch has…
+
+```{r, echo=FALSE}
+q35_sum<-survey %>% 
+  select(catch_trends) %>% 
+  group_by(catch_trends) %>% 
+  count()
+```
+
 36. How much do you agree with the following statements
 
+```{r, echo=FALSE}
+q36<-survey %>% 
+  select(starts_with("opinion")) %>% 
+  na.omit()
 
+q36_response<-nrow(q36)
 
-
-
-
+q36_sum<-q36 %>% 
+  gather(opinion, answer) %>% 
+  count(opinion, answer) %>% 
+  spread(opinion, n)
+```
 
 
 37. Please indicate how much you trust the following groups
 
+```{r, echo=FALSE}
+q37<-survey %>% 
+  select(starts_with("trust")) %>% 
+  na.omit()
 
+q37_response<-nrow(q37)
 
-
-
-
-
-
-
+q37_sum<-q37 %>% 
+  gather(trust, answer) %>% 
+  count(trust, answer) %>% 
+  spread(trust, n)
+```
 
 
 38. Please indicate how satisfied you were when working with the following organizations
 
+```{r, echo=FALSE}
+q38<-survey %>% 
+  select(starts_with("satisfaction")) %>% 
+  na.omit()
+
+q38_response<-nrow(q38)
+
+q38_sum<-q38 %>% 
+  gather(satisfaction, answer) %>% 
+  count(satisfaction, answer) %>% 
+  spread(satisfaction, n) %>% 
+  replace(., is.na(.), 0)
+```
 
 39. What is your age?
+
+```{r, echo=FALSE}
+q39<-survey %>% 
+  select(age) 
+
+q39_count<-q39 %>% 
+  group_by(age) %>% 
+  count()
+
+#dividing into bins
+
+# set up cut-off values 
+breaks <- seq(15, 80, 5)
+
+# bucketing values into bins
+age.cut <- cut(q39$age, breaks, right=FALSE)
+
+age.freq <- age.cut %>% 
+  table() %>% 
+  cbind() %>% 
+  as.data.frame() %>% 
+  rename(count = 1)
+```
+
 40. How many years have you been fishing?
+
+```{r, echo=FALSE}
+q40<-survey %>% 
+  select(years_fishing) %>% 
+  na.omit()
+
+q40_count<-q40 %>% 
+  group_by(years_fishing) %>% 
+  count()
+
+summary(q40)
+
+#dividing into bins
+
+# set up cut-off values 
+q40_breaks <- seq(0, 60, 5)
+
+# bucketing values into bins
+fishing_cut <- cut(q40$years_fishing, q40_breaks, right=FALSE)
+
+fishing_freq <- fishing_cut %>% 
+  table() %>% 
+  cbind() %>% 
+  as.data.frame() %>% 
+  rename(count = 1)
+```
+
+
 41.What is your level of education? (Please choose one)
+
+```{r, echo=FALSE}
+q41_response<-survey %>% 
+  select(education) %>% 
+  na.omit() %>% 
+  nrow()
+
+q41_sum<-survey %>% 
+  select(education) %>% 
+  group_by(education) %>% 
+  count()
+```
+
 Other
 42. What is your average monthly income?
+
+```{r, echo=FALSE}
+q42_response<-survey %>% 
+  select(income) %>% 
+  na.omit() %>% 
+  nrow()
+```
+
+#income Breaks
+```{r, echo=FALSE}
+income_breaks <- seq(0, 100, 10)
+```
+
 43. What percent (out of 100%) of your annual income comes from fishing?
+
+```{r, echo=FALSE}
+q43<-survey %>% 
+  select(income_fishing) %>% 
+  na.omit()
+
+q43_response<-survey %>% 
+  select(income_fishing) %>% 
+  na.omit() %>% 
+  nrow()
+
+# bucketing values into bins
+income_cut <- cut(q43$income_fishing, income_breaks, right=FALSE)
+
+income_freq <- income_cut %>% 
+  table() %>% 
+  cbind() %>% 
+  as.data.frame() %>% 
+  rename(count = 1)
+```
+
 44. What percent (out of 100%) of your income is spent on expenses related to fishing?
+
+```{r, echo=FALSE}
+q44<-survey %>% 
+  select(income_expenses) %>% 
+  na.omit()
+
+q44_response<-survey %>% 
+  select(income_expenses) %>% 
+  na.omit() %>% 
+  nrow()
+
+# bucketing values into bins
+expenses_cut <- cut(q44$income_expenses, income_breaks, right=FALSE)
+
+expense_freq <- expenses_cut  %>% 
+  table() %>% 
+  cbind() %>% 
+  as.data.frame() %>% 
+  rename(count = 1)
+```
+
+
+
 Photo of the Fishing Vessel if available (or other relevant material)
 Any additional questions, comments, notes, etc....
