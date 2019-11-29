@@ -1,0 +1,261 @@
+---
+title: "Demographic Distribution"
+author: "BR"
+date: "28/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(DT)
+```
+
+
+```{r}
+# Read in all of the raw data
+survey <- read_csv("raw/master_survey_resp.csv")
+```
+Question label 
+Purpose of Survey
+Survey ID
+Survey Version
+Name of Interviewer
+Affiliated Organization
+1. Country
+2. Community Name
+3. Gender of Interviewed
+
+
+4. In the last 12 months, what fishing gear have you used?
+```{r}
+q4_response<-survey %>% 
+  select(starts_with("gear")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q4_sum<-survey %>% 
+  mutate(gear_buceo = ifelse(grepl("Buceo", other_gear), 1, 0)) %>% 
+  select(starts_with("gear")) %>% 
+  summarise_all(sum, na.rm = TRUE)
+```
+
+
+Other
+
+5. For fishing purposes, do you own a boat, share a boat, or rent a boat from others, or do not use a boat?
+```{r}
+q5_response<-survey %>% 
+  select(starts_with("boat_status")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q5_sum<-survey %>% 
+  select(starts_with("boat_status")) %>% 
+  group_by(boat_status) %>% 
+  count()
+```
+
+6. For your primary fishing vessel, please describe the boat in the following aspects:
+
+a. Length
+```{r}
+q6a_response<-survey %>% 
+  select(starts_with("boat_length")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q6a_sum<-survey %>% 
+  select(starts_with("boat_length")) %>% 
+  group_by(boat_length_m) %>% 
+  count()
+```
+
+b. Material
+```{r}
+q6b_response<-survey %>% 
+  select(starts_with("boat_material")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q6b_sum<-survey %>% 
+  select(starts_with("boat_material")) %>% 
+  group_by(boat_material) %>% 
+  count()
+```
+
+c. Is the boat motorized
+```{r}
+q6c_response<-survey %>% 
+  select(starts_with("boat_motorized")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q6c_sum<-survey %>% 
+  select(starts_with("boat_motorized")) %>% 
+  group_by("boat_motorized") %>% 
+  count()
+```
+
+d. Is there an onboard power/ electricity source?
+```{r}
+q6d_response<-survey %>% 
+  select(starts_with("boat_power")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q6d_sum<-survey %>% 
+  select(starts_with("boat_power")) %>% 
+  group_by(boat_power) %>% 
+  count()
+```
+
+Comments
+
+7. Please check all the types of technology that you use at least once a week, if any
+```{r}
+unique(unlist(strsplit(as.character(survey$other_tech), ",")))
+
+q7_response<-survey %>% 
+  select(starts_with("tech")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q7_sum<-survey %>% 
+  select(starts_with("tech")) %>% 
+  summarise_all(sum, na.rm = TRUE)
+```
+
+
+Other
+
+8. Please check all the types of technology that you use or have used at some point for your fishing activity
+```{r}
+q8_response<-survey %>% 
+  select(starts_with("fishtech")) %>% 
+  na.omit() %>% 
+  nrow()
+
+q8_sum<-survey %>% 
+  select(starts_with("fishtech")) %>% 
+  summarise_all(sum, na.rm = TRUE)
+
+q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
+```
+
+Other
+*TEXT*
+9. What type of tracking technology did you use on your vessel?
+*TEXT*
+10. Please list some positive aspects of this technology
+*TEXT*
+11. Please list some negative aspects of this technology
+*TEXT*
+
+````
+12. You have to install and use one or the other tracking package for a year. which would you be more likely to install and use consistently on every fishing trip?
+13. Would you prefer the package you chose or no tracking package at all?
+14.i. Would you be willing to pay $5 per month for the package you chose?
+14.ii. Would you be willing to pay $10 per month for the package you chose?
+14.iii. Would you be willing to pay 15 per month for the package you chose?
+14.iv. Would you be willing to pay $20 per month for the package you chose?
+15.i. Would you be willing to accept a tracking package for $5 per month?
+15.ii. Would you be willing to accept a tracking package for $10 per month?
+15.iii. Would you be willing to accept a tracking package for $15 per month?
+15.iv. Would you be willing to accept a tracking package for $20 per month?
+
+16. Please mention any negatives that this technology might bring to you
+17. Please mention any other positives that this technology might bring to you
+````
+
+18. Please choose 3 benefits you want from the tracking device, if it is installed in your boat
+```{r}
+
+```
+
+19. In general, why do you think you and your community may or may not not adopt this technology?
+
+*TEXT*
+
+20. Combining all seasons, what are your top three targeted fisheries?
+
+
+21. What percent of the total catch (out of 100%) goes to...
+```{r}
+q21_response<-survey %>% 
+  select(starts_with("fraction")) %>% 
+  mutate(fraction_total = rowSums(.))
+
+  na.omit() %>% 
+  nrow()
+
+q21_sum<-survey %>% 
+  select(starts_with("fishtech")) %>% 
+  summarise_all(sum, na.rm = TRUE)
+```
+
+
+
+
+Other
+22. Are you part of a fishing organization?
+23. What type of organization?
+Other
+24. What role do you have in the organization?
+Other
+25. How many members does the organization have?
+26. Who is allowed to fish for your #1 targeted fishery, ${target_species_one} ?
+Other
+27. Please indicate what regulations exist for your #1 targeted fisherie, ${target_species_one}.
+Other
+28. Who is responsible for enforcement in your community?
+Other
+29. On average, how often are these fishing regulations enforced?
+Other
+30. How severe is the punishment when a person gets caught violating the fishing regulations?
+31. Are there any closed areas in your fishing area?
+32. Wat do you think are the biggest problems your fishery faces?
+
+
+33. How do you think the problems you mentioned can be solved?
+
+
+34. Please rank the following problems from 1 to 4, where 1 has the strongest impact on your fishing activity and 4 has the least impact on your fishing activity
+
+
+
+35. In the last few years, the current fish catch has…
+36. How much do you agree with the following statements
+
+
+
+
+
+
+
+
+37. Please indicate how much you trust the following groups
+
+
+
+
+
+
+
+
+
+
+
+38. Please indicate how satisfied you were when working with the following organizations
+
+
+39. What is your age?
+40. How many years have you been fishing?
+41.What is your level of education? (Please choose one)
+Other
+42. What is your average monthly income?
+43. What percent (out of 100%) of your annual income comes from fishing?
+44. What percent (out of 100%) of your income is spent on expenses related to fishing?
+Photo of the Fishing Vessel if available (or other relevant material)
+Any additional questions, comments, notes, etc....
