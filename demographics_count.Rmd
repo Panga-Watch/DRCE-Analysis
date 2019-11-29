@@ -13,7 +13,7 @@ library(tidyverse)
 library(here)
 library(DT)
 library(kableExtra)
-
+library(ggplot2)
 ```
 
 
@@ -32,7 +32,8 @@ Affiliated Organization
 3. Gender of Interviewed
 
 
-4. In the last 12 months, what fishing gear have you used?
+### 4. Fishing Gear Used 
+In the last 12 months, what fishing gear have you used?
 ```{r, echo=FALSE}
 q4<-survey %>% 
   mutate(gear_buceo = ifelse(grepl("Buceo", other_gear), 1, 0)) %>% 
@@ -54,17 +55,22 @@ q4_sum<-q4 %>%
   gather(gear, Count) %>% 
   mutate(Percent = round((Count/q4_response)*100, 0)) %>% 
   rename(Gear = 1)
+```
+**Total Responses** = `r q4_response`
 
+```{r, echo=FALSE}
 q4_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
-
 ```
 
-
 Other
+```{r}
+#Other Gear Indicated 
+```
 
-5. For fishing purposes, do you own a boat, share a boat, or rent a boat from others, or do not use a boat?
+### 5. Status of Boat Ownership 
+For fishing purposes, do you own a boat, share a boat, or rent a boat from others, or do not use a boat?
 ```{r, echo=FALSE}
 q5_response<-survey %>% 
   select(starts_with("boat_status")) %>% 
@@ -73,18 +79,28 @@ q5_response<-survey %>%
 
 
 q5_sum<-survey %>% 
-  select(starts_with("boat_status")) %>% 
+  select(starts_with("boat_status")) %>%
+  mutate(boat_status= recode(boat_status,
+                             "own"=	"Own",
+                             "share_employee"=	"Share with others as part of a collective",
+                             "share_collective"=	"Share with others as an employee",
+                             "rent"=	"Rent from others",
+                             "none"=	"Do not use a boat to fish")) %>% 
   group_by(boat_status) %>% 
-  count()
+  count() %>%
+  rename("status"=1, "Count"=2)
+```
 
+```{r, echo=FALSE}
 q5_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-6. For your primary fishing vessel, please describe the boat in the following aspects:
+### 6. Vessel Characteristics
+For your primary fishing vessel, please describe the boat in the following aspects:
 
-a. Length
+#### a. Length
 ```{r, echo=FALSE}
 q6a_response<-survey %>% 
   select(starts_with("boat_length")) %>% 
@@ -94,10 +110,15 @@ q6a_response<-survey %>%
 q6a_sum<-survey %>% 
   select(starts_with("boat_length")) %>% 
   group_by(boat_length_m) %>% 
-  count()
+  count() %>% 
+  rename("Length (m)"=1, "Count"=2)
+
+q6a_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-b. Material
+#### b. Material
 ```{r, echo=FALSE}
 q6b_response<-survey %>% 
   select(starts_with("boat_material")) %>% 
@@ -105,12 +126,24 @@ q6b_response<-survey %>%
   nrow()
 
 q6b_sum<-survey %>% 
-  select(starts_with("boat_material")) %>% 
+  select(starts_with("boat_material")) %>%
+  mutate(boat_material= recode(boat_material,
+                             "w"=	"Wood",
+                             "fg"=	"Fiberglass")) %>% 
   group_by(boat_material) %>% 
-  count()
+  count() %>%
+  rename("Material"=1, "Count"=2)
+```
+Total Responses = `r q6b_response`
+
+```{r, echo=FALSE}
+q6b_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
 ```
 
-c. Is the boat motorized
+#### c. Is the boat Motorized?
 ```{r, echo=FALSE}
 q6c_response<-survey %>% 
   select(starts_with("boat_motorized")) %>% 
@@ -119,11 +152,22 @@ q6c_response<-survey %>%
 
 q6c_sum<-survey %>% 
   select(starts_with("boat_motorized")) %>% 
-  group_by("boat_motorized") %>% 
-  count()
+  mutate(boat_motorized= recode(boat_motorized,
+                             "y"=	"Yes",
+                             "n"=	"No")) %>% 
+  group_by(boat_motorized) %>% 
+  count() %>%
+  rename("Motorized"=1, "Count"=2)
+```
+Total Responses = `r q6c_response`
+
+```{r, echo=FALSE}
+q6c_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-d. Is there an onboard power/ electricity source?
+#### d. Is there an onboard power/ electricity source?
 ```{r, echo=FALSE}
 q6d_response<-survey %>% 
   select(starts_with("boat_power")) %>% 
@@ -132,13 +176,25 @@ q6d_response<-survey %>%
 
 q6d_sum<-survey %>% 
   select(starts_with("boat_power")) %>% 
+  mutate(boat_power= recode(boat_power,
+                             "y"=	"Yes",
+                             "n"=	"No")) %>% 
   group_by(boat_power) %>% 
-  count()
+  count() %>%
+  rename("Onboard Power"=1, "Count"=2)
+```
+Total Responses = `r q6d_response`
+
+```{r, echo=FALSE}
+q6d_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 Comments
 
-7. Please check all the types of technology that you use at least once a week, if any
+### 7. Technology Use 
+Please check all the types of technology that you use at least once a week, if any
 ```{r, echo=FALSE}
 q7<-survey %>% 
   select(starts_with("tech")) %>% 
@@ -160,19 +216,24 @@ q7_sum<-q7 %>%
   gather(tech, Count) %>% 
   mutate(Percent = round((Count/q7_response)*100, 0)) %>% 
   rename(Technology = 1)
+```
+Total Responses = `r q7_response`
 
+```{r, echo=FALSE}
 q7_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
-
 
 Other
 ```{r, include=FALSE}
 unique(unlist(strsplit(as.character(survey$other_tech), ",")))
 ```
 
-8. Please check all the types of technology that you use or have used at some point for your fishing activity
+### 8. Technology Use During Fishing Activity 
+
+Please check all the types of technology that you use or have used at some point for your fishing activity
+
 ```{r, echo=FALSE}
 q8<-survey %>% 
   select(starts_with("fishtech")) %>% 
@@ -197,12 +258,14 @@ q8_sum<-q8 %>%
   gather(tech, Count) %>% 
   mutate(Percent = round((Count/q8_response)*100, 0)) %>% 
   rename(Technology = 1)
+```
 
+Total Responses = `r q8_response`
+
+```{r, echo=FALSE}
 q8_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
-
-q8_response
 ```
 
 Other
@@ -235,7 +298,7 @@ q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 17. Please mention any other positives that this technology might bring to you
 ````
 
-18. Please choose 3 benefits you want from the tracking device, if it is installed in your boat
+### 18. Please choose 3 benefits you want from the tracking device, if it is installed in your boat
 ```{r, echo=FALSE}
 
 ```
@@ -247,7 +310,9 @@ q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 20. Combining all seasons, what are your top three targeted fisheries?
 
 
-21. What percent of the total catch (out of 100%) goes to...
+### 21. Market Distribution of Cacth
+
+What percent of the total catch (out of 100%) goes to...
 ```{r, echo=FALSE}
 q21<-survey %>% 
   select(starts_with("fraction")) %>% 
@@ -268,6 +333,9 @@ q21_clean<-q21 %>%
   replace(., is.na(.), 0) %>% 
   select(-total)
 
+q21_response<-q21_clean %>% 
+  nrow()
+
 summary(q21_clean, digits = 1)
 
 #Number of 0 fraction per column 
@@ -276,12 +344,26 @@ sapply(q21_clean, function(x)length(which(x==0)))
 #number of non-zero fraction per column
 sapply(q21_clean, function(x)length(which(x!=0)))
 ```
+Total Responses = `r q21_response` *Number of responses that total 100%
 
+```{r, echo=FALSE}
+q21_plot<-q21_clean %>% 
+  gather(Market, Fraction) %>% 
+  mutate(Market= recode(Market,
+                        "fraction_export"=	"Export",
+                        "fraction_local_trade"=	"Local Trade",
+                        "fraction_neighbor" = "Shared with Neighboring House Hold",
+                        "fraction_other" = "Other",
+                        "fraction_personal" = "Personal Consumption"))
 
-
+ggplot(q21_plot, aes(x=Fraction))+
+  geom_histogram()+
+  facet_grid(. ~ Market)
+```
 
 Other
-22. Are you part of a fishing organization?
+
+### 22. Are you part of a fishing organization?
 ```{r, echo=FALSE}
 q22_response<-survey %>% 
   select(starts_with("fishing_organization")) %>% 
@@ -294,8 +376,16 @@ q22_sum<-survey %>%
   count()
 ```
 
+Total Responses = `r q22_response`
 
-23. What type of organization?
+```{r, echo=FALSE}
+q22_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+### 23. What type of organization?
 ```{r, echo=FALSE}
 q23<-survey %>% 
   filter(fishing_organization=="y") %>% 
@@ -311,8 +401,16 @@ q23_sum<-q23 %>%
   count()
 ```
 
+Total Responses = `r q23_response`
+
+```{r, echo=FALSE}
+q23_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
 Other
-24. What role do you have in the organization?
+### 24. What role do you have in the organization?
 ```{r, echo=FALSE}
 q24<-survey %>% 
   filter(fishing_organization=="y") %>% 
@@ -328,8 +426,17 @@ q24_sum<-q24 %>%
   count()
 ```
 
+Total Responses = `r q24_response`
+
+```{r, echo=FALSE}
+q24_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
 Other
-25. How many members does the organization have?
+
+### 25. How many members does the organization have?
 ```{r, echo=FALSE}
 q25<-survey %>% 
   filter(fishing_organization=="y") %>% 
@@ -345,7 +452,15 @@ q25_sum<-q25%>%
   count()
 ```
 
-26. Who is allowed to fish for your #1 targeted fishery, ${target_species_one} ?
+Total Responses = `r q25_response`
+
+```{r, echo=FALSE}
+q25_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+### 26. Who is allowed to fish for your #1 targeted fishery, ${target_species_one} ?
 
 ```{r, echo=FALSE}
 q26_sum<-survey %>% 
@@ -354,9 +469,17 @@ q26_sum<-survey %>%
   count()
 ```
 
+Total Responses = `r q26_response`
+
+```{r, echo=FALSE}
+q26_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
 
 Other
-27. Please indicate what regulations exist for your #1 targeted fisherie, ${target_species_one}.
+### 27. Please indicate what regulations exist for your #1 targeted fisherie, ${target_species_one}.
 
 ```{r, echo=FALSE}
 q27_response<-survey %>% 
@@ -370,8 +493,16 @@ q27_sum<-survey %>%
   gather(restriction, count)
 ```
 
+Total Responses = `r q27_response`
+
+```{r, echo=FALSE}
+q27_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
 Other
-28. Who is responsible for enforcement in your community?
+### 28. Who is responsible for enforcement in your community?
 ```{r, echo=FALSE}
 q28<-survey %>% 
   select(starts_with("enforcement")) %>% 
@@ -386,9 +517,17 @@ q28_sum<-q28 %>%
   gather(enforcement, count)
 ```
 
+Total Responses = `r q28_response`
+
+```{r, echo=FALSE}
+q28_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
 
 Other
-29. On average, how often are these fishing regulations enforced?
+### 29. On average, how often are these fishing regulations enforced?
 
 ```{r, echo=FALSE}
 q29_sum<-survey %>% 
@@ -397,35 +536,79 @@ q29_sum<-survey %>%
   count()
 ```
 
-Other
+Total Responses = `r q29_response`
 
-30. How severe is the punishment when a person gets caught violating the fishing regulations?
 ```{r, echo=FALSE}
-q30_sum<-survey %>% 
-  select(punishment_severity) %>% 
-  group_by(punishment_severity) %>% 
-  count()
+q29_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-31. Are there any closed areas in your fishing area?
+Other
+
+### 30. Severity of Punishment for Violating Fishing Regulations 
+
+How severe is the punishment when a person gets caught violating the fishing regulations?
+```{r, echo=FALSE}
+q30<-survey %>% 
+  select(punishment_severity) 
+
+q30_response<-q30 %>% 
+  na.omit() %>% 
+  nrow()
+
+q30_sum<-q30 %>% 
+  group_by(punishment_severity) %>% 
+  count() %>% 
+  rename("Severity"=1, "Count"=2)
+```
+
+Total Responses = `r q30_response`
 
 ```{r, echo=FALSE}
-q31_sum<-survey %>% 
-  select(mpa) %>% 
+q30_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+### 31. Are there any closed areas in your fishing area?
+
+```{r, echo=FALSE}
+q31<-survey %>% 
+  select(mpa) 
+
+q31_response<-q31 %>% 
+  na.omit() %>% 
+  nrow()
+
+q31_sum <- q31 %>% 
+  mutate(mpa= recode(mpa,
+                     "y"=	"Yes",
+                     "n"=	"No")) %>% 
   group_by(mpa) %>% 
-  count()
+  count() %>% 
+  rename("MPA"=1, "Count"=2)
+```
+
+Total Responses = `r q31_response`
+
+```{r, echo=FALSE}
+q31_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
 32. Wat do you think are the biggest problems your fishery faces?
 
-*TEXT*
+**TEXT**
 
 33. How do you think the problems you mentioned can be solved?
 
-*TEXT*
+**TEXT**
 
-34. Please rank the following problems from 1 to 4, where 1 has the strongest impact on your fishing activity and 4 has the least impact on your fishing activity
+### 34. Ranking of Problems During Fishing Activity
+Please rank the following problems from 1 to 4, where 1 has the strongest impact on your fishing activity and 4 has the least impact on your fishing activity
 
 ```{r, echo=FALSE}
 q34<-survey %>% 
@@ -451,7 +634,7 @@ q34_sum_omit.na<-q34 %>%
 ```
 
 
-35. In the last few years, the current fish catch has…
+### 35. In the last few years, the current fish catch has…
 
 ```{r, echo=FALSE}
 q35_sum<-survey %>% 
@@ -460,7 +643,7 @@ q35_sum<-survey %>%
   count()
 ```
 
-36. How much do you agree with the following statements
+### 36. How much do you agree with the following statements
 
 ```{r, echo=FALSE}
 q36<-survey %>% 
@@ -476,7 +659,7 @@ q36_sum<-q36 %>%
 ```
 
 
-37. Please indicate how much you trust the following groups
+### 37. Please indicate how much you trust the following groups
 
 ```{r, echo=FALSE}
 q37<-survey %>% 
@@ -492,7 +675,7 @@ q37_sum<-q37 %>%
 ```
 
 
-38. Please indicate how satisfied you were when working with the following organizations
+### 38. Please indicate how satisfied you were when working with the following organizations
 
 ```{r, echo=FALSE}
 q38<-survey %>% 
@@ -508,7 +691,7 @@ q38_sum<-q38 %>%
   replace(., is.na(.), 0)
 ```
 
-39. What is your age?
+### 39. What is your age?
 
 ```{r, echo=FALSE}
 q39<-survey %>% 
@@ -533,18 +716,15 @@ age.freq <- age.cut %>%
   rename(count = 1)
 ```
 
-40. How many years have you been fishing?
+### 40. How many years have you been fishing?
 
 ```{r, echo=FALSE}
 q40<-survey %>% 
   select(years_fishing) %>% 
   na.omit()
 
-q40_count<-q40 %>% 
-  group_by(years_fishing) %>% 
-  count()
-
-summary(q40)
+q40_response<-q40 %>% 
+  nrow()
 
 #dividing into bins
 
@@ -561,8 +741,16 @@ fishing_freq <- fishing_cut %>%
   rename(count = 1)
 ```
 
+**Total Responses** = `r q40_response`
 
-41.What is your level of education? (Please choose one)
+```{r, echo=FALSE}
+fishing_freq %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+### 41.What is your level of education? (Please choose one)
 
 ```{r, echo=FALSE}
 q41_response<-survey %>% 
@@ -576,8 +764,16 @@ q41_sum<-survey %>%
   count()
 ```
 
+**Total Responses** = `r q41_response`
+
+```{r, echo=FALSE}
+q41_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
 Other
-42. What is your average monthly income?
+### 42. What is your average monthly income?
 
 ```{r, echo=FALSE}
 q42_response<-survey %>% 
@@ -586,12 +782,22 @@ q42_response<-survey %>%
   nrow()
 ```
 
-#income Breaks
+**Total Responses** = `r q42_response`
+
 ```{r, echo=FALSE}
+q42_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+```{r, echo=FALSE}
+#set parameters for income break
+
 income_breaks <- seq(0, 100, 10)
 ```
 
-43. What percent (out of 100%) of your annual income comes from fishing?
+### 43. What percent (out of 100%) of your annual income comes from fishing?
 
 ```{r, echo=FALSE}
 q43<-survey %>% 
@@ -613,7 +819,15 @@ income_freq <- income_cut %>%
   rename(count = 1)
 ```
 
-44. What percent (out of 100%) of your income is spent on expenses related to fishing?
+**Total Responses** = `r q43_response`
+
+```{r, echo=FALSE}
+q5_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+### 44. What percent (out of 100%) of your income is spent on expenses related to fishing?
 
 ```{r, echo=FALSE}
 q44<-survey %>% 
@@ -633,6 +847,14 @@ expense_freq <- expenses_cut  %>%
   cbind() %>% 
   as.data.frame() %>% 
   rename(count = 1)
+```
+
+**Total Responses** = `r q44_response`
+
+```{r, echo=FALSE}
+q5_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
