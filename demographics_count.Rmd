@@ -64,7 +64,7 @@ q4_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
 ```{r}
 #Other Gear Indicated 
 ```
@@ -225,7 +225,7 @@ q7_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
 ```{r, include=FALSE}
 unique(unlist(strsplit(as.character(survey$other_tech), ",")))
 ```
@@ -268,7 +268,7 @@ q8_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
 
 ```{r, include=FALSE}
 q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
@@ -371,9 +371,13 @@ q22_response<-survey %>%
   nrow()
 
 q22_sum<-survey %>% 
-  select(starts_with("fishing_organization")) %>% 
+  select(starts_with("fishing_organization")) %>%
+  mutate(fishing_organization= recode(fishing_organization,
+                             "y"=	"Yes",
+                             "n"=	"No")) %>%   
   group_by(fishing_organization) %>% 
-  count()
+  count() %>% 
+  rename("Membership" = 1, "Count" = 2)
 ```
 
 Total Responses = `r q22_response`
@@ -389,16 +393,22 @@ q22_sum %>%
 ```{r, echo=FALSE}
 q23<-survey %>% 
   filter(fishing_organization=="y") %>% 
-  select(starts_with("fishing_org_type"))
+  select(starts_with("fishing_org_type")) %>% 
+  na.omit()
 
 #number of responses out of those who indicated they belong to a fishing organization (out of 136)
 q23_response<- q23 %>% 
-  na.omit() %>% 
   nrow()
 
-q23_sum<-q23 %>% 
+q23_sum<-q23 %>%
+  mutate(fishing_org_type = recode(fishing_org_type,
+                             "cooperative"=	"Cooperative",
+                             "union"=	"Union",
+                             "customary_org" = "Customary Organization",
+                             "other" = "Other")) %>%   
   group_by(fishing_org_type) %>% 
-  count()
+  count() %>% 
+  rename("Type of Organization" = 1, "Count" = 2)
 ```
 
 Total Responses = `r q23_response`
@@ -409,21 +419,28 @@ q23_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
+
 ### 24. What role do you have in the organization?
 ```{r, echo=FALSE}
 q24<-survey %>% 
   filter(fishing_organization=="y") %>% 
-  select(starts_with("fishing_org_role"))
+  select(starts_with("fishing_org_role")) %>% 
+  na.omit()
 
 #number of responses out of those who indicated they belong to a fishing organization (out of 136)
 q24_response<- q24 %>% 
-  na.omit() %>% 
   nrow()
 
 q24_sum<-q24 %>% 
+  mutate(fishing_org_role = recode(fishing_org_role,
+                             "apprentice" =	"Apprentice",
+                             "partner" =	"Partner",
+                             "director" =	"Director",
+                             "other"	= "Other")) %>%   
   group_by(fishing_org_role) %>% 
-  count()
+  count() %>% 
+  rename("Role in Organization" = 1, "Count" = 2)
 ```
 
 Total Responses = `r q24_response`
@@ -434,22 +451,28 @@ q24_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
 
 ### 25. How many members does the organization have?
 ```{r, echo=FALSE}
 q25<-survey %>% 
   filter(fishing_organization=="y") %>% 
-  select(starts_with("fishing_org_members"))
+  select(starts_with("fishing_org_members")) %>% 
+  na.omit()
 
 #number of responses out of those who indicated they belong to a fishing organization (out of 136)
 q25_response<- q25 %>% 
-  na.omit() %>% 
   nrow()
 
-q25_sum<-q25%>% 
+q25_sum<- q25 %>% 
+  mutate(fishing_org_members = recode(fishing_org_members,
+                             "apprentice" =	"Apprentice",
+                             "partner" =	"Partner",
+                             "director" =	"Director",
+                             "other"	= "Other")) %>%   
   group_by(fishing_org_members) %>% 
-  count()
+  count() %>% 
+  rename("Members in Organization" = 1, "Count" = 2)
 ```
 
 Total Responses = `r q25_response`
@@ -463,10 +486,23 @@ q25_sum %>%
 ### 26. Who is allowed to fish for your #1 targeted fishery, ${target_species_one} ?
 
 ```{r, echo=FALSE}
-q26_sum<-survey %>% 
-  select(starts_with("access")) %>% 
+q26<-survey %>% 
+  select(access_target_species) %>% 
+  na.omit()
+
+q26_response <- q26 %>% 
+  nrow()
+
+q26_sum<-q26 %>% 
+  mutate(access_target_species = recode(access_target_species,
+                             "community" =	"Members of your fishing organization/ community only",
+                             "neighboring_community" =	"Members from you and neighboring fishing organization/ communities",
+                             "no_restrictions" =	"Open Access / No Restrictions",
+                             "permit_holders"	= "Anyone with a Permit",
+                             "other" = "Other")) %>%   
   group_by(access_target_species) %>% 
-  count()
+  count() %>% 
+  rename("Access to Target Species" = 1, "Count" = 2)
 ```
 
 Total Responses = `r q26_response`
@@ -478,19 +514,26 @@ q26_sum %>%
 ```
 
 
-Other
+Other  
+
 ### 27. Please indicate what regulations exist for your #1 targeted fisherie, ${target_species_one}.
 
 ```{r, echo=FALSE}
-q27_response<-survey %>% 
+q27<- survey %>% 
   select(starts_with("restriction")) %>% 
-  na.omit() %>% 
+  na.omit() 
+
+q27_response<- q27 %>% 
   nrow()
 
-q27_sum<-survey %>% 
-  select(starts_with("restriction")) %>% 
+oldnames27 <-colnames(q27)
+newnames27 <- c("Gear", "Size", "Seasonal", "Spacial", "Quota", "Other", "No Restrictions")
+
+q27_sum<-q27 %>%
+  rename_at(vars(oldnames27), ~ newnames27) %>% 
   summarise_all(sum, na.rm = TRUE) %>% 
-  gather(restriction, count)
+  gather(restriction, count) %>% 
+  rename("Restriction Type" = 1, "Count" = 2)
 ```
 
 Total Responses = `r q27_response`
@@ -501,20 +544,26 @@ q27_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
+
 ### 28. Who is responsible for enforcement in your community?
 ```{r, echo=FALSE}
 q28<-survey %>% 
   select(starts_with("enforcement")) %>% 
-  select(-enforcement_interval)
+  select(-enforcement_interval) %>% 
+  na.omit()
 
 q28_response<-q28 %>% 
-  na.omit() %>% 
   nrow()
 
-q28_sum<-q28 %>% 
+oldnames28<-colnames(q28)
+newnames28 <- c("Community Members", "Village Customary Leaders", "Village Government", "Provincial Government", "National Government", "No Enforcement", "Other")
+
+q28_sum<-q28 %>%
+  rename_at(vars(oldnames28), ~ newnames28) %>% 
   summarise_all(sum, na.rm = TRUE) %>% 
-  gather(enforcement, count)
+  gather(enforcement, count) %>% 
+  rename("Enforcement Official" = 1, "Count" = 2)
 ```
 
 Total Responses = `r q28_response`
@@ -526,14 +575,30 @@ q28_sum %>%
 ```
 
 
-Other
+Other  
+
 ### 29. On average, how often are these fishing regulations enforced?
 
 ```{r, echo=FALSE}
-q29_sum<-survey %>% 
+q29<-survey %>% 
   select(enforcement_interval) %>% 
+  na.omit()
+
+q29_response<-q29 %>% 
+  nrow()
+
+q29_sum<-q29 %>% 
+  mutate(enforcement_interval = recode(enforcement_interval,
+                             "once_week" =	"Once per Week",
+                             "once_month" =	"Once per Month",
+                             "few_year" =	"Few Times per Year",
+                             "once_year"	= "Once per Year",
+                             "never" = "No Enforcement",
+                             "other" = "Other",
+                             "every_week" = "Every Week")) %>%   
   group_by(enforcement_interval) %>% 
-  count()
+  count() %>% 
+  rename("Enforcement Interval"=1, "Count"=2)
 ```
 
 Total Responses = `r q29_response`
@@ -544,20 +609,26 @@ q29_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
 
 ### 30. Severity of Punishment for Violating Fishing Regulations 
 
 How severe is the punishment when a person gets caught violating the fishing regulations?
 ```{r, echo=FALSE}
 q30<-survey %>% 
-  select(punishment_severity) 
+  select(punishment_severity) %>% 
+  na.omit()
 
 q30_response<-q30 %>% 
-  na.omit() %>% 
   nrow()
 
-q30_sum<-q30 %>% 
+q30_sum<-q30 %>%
+  mutate(punishment_severity = recode(punishment_severity,
+                             "moderate" =	"Moderate",
+                             "none" =	"No Punishment",
+                             "severe" =	"Severe",
+                             "strong"	= "Strong",
+                             "weak" = "Weak")) %>%   
   group_by(punishment_severity) %>% 
   count() %>% 
   rename("Severity"=1, "Count"=2)
@@ -630,17 +701,55 @@ q34_sum_omit.na<-q34 %>%
   gather(rank, problem) %>% 
   count(rank, problem) %>% 
   spread(rank, n) %>% 
-  select(problem, rank_one, rank_two, rank_three, rank_four)
+  select(problem, rank_one, rank_two, rank_three, rank_four) %>% 
+  arrange(-rank_one) %>% 
+  rename("Problem"=1, "Rank 1"=2, "Rank 2" = 3, "Rank 3"=4, "Rank 4" = 5) %>% 
+  mutate(Problem = recode(Problem,
+                          "corruption"=	"Corruption of Fishing Authorities",
+                          "iuu"=	"Illegal Fishing",
+                          "pollution" = "Marine Trash and Pollution",
+                          "weather" = "Extreme Weather Events")) 
+```
+
+Total Responses = `r q34_response`
+
+```{r, echo=FALSE}
+q34_sum_omit.na %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
-### 35. In the last few years, the current fish catch has…
+### 35. Catch Trends
+
+In the last few years, the current fish catch has…
 
 ```{r, echo=FALSE}
-q35_sum<-survey %>% 
+q35<-survey %>% 
   select(catch_trends) %>% 
+  na.omit() 
+
+q35_response <- q35 %>%
+  nrow()
+  
+q35_sum<-q35 %>% 
+  mutate(catch_trends = recode(catch_trends,
+                        "improve_high"=	"Improved a Lot",
+                        "improve_low"=	"Improved a Little",
+                        "no_change" = "Stayed the Same",
+                        "decline_low" = "Declined a Little",
+                        "decline_high" = "Declined a Lot")) %>% 
   group_by(catch_trends) %>% 
-  count()
+  count() %>% 
+  rename("Trend" = 1, "Count" = 2)
+```
+
+Total Responses = `r q35_response`
+
+```{r, echo=FALSE}
+q35_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 ### 36. How much do you agree with the following statements
@@ -650,12 +759,27 @@ q36<-survey %>%
   select(starts_with("opinion")) %>% 
   na.omit()
 
-q36_response<-nrow(q36)
+q36_response<-q36 %>% 
+  nrow()
 
 q36_sum<-q36 %>% 
   gather(opinion, answer) %>% 
   count(opinion, answer) %>% 
-  spread(opinion, n)
+  spread(answer, n) %>% 
+  rename("Statement" = 1,
+         "Strongly Disagree" = 2, 
+         "Disagree" = 3, 
+         "Neutral" = 4, 
+         "Agree" = 5, 
+         "Strongly Agree" = 6)
+```
+
+Total Responses = `r q36_response`
+
+```{r, echo=FALSE}
+q36_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
@@ -671,9 +795,22 @@ q37_response<-nrow(q37)
 q37_sum<-q37 %>% 
   gather(trust, answer) %>% 
   count(trust, answer) %>% 
-  spread(trust, n)
+  spread(answer, n)%>% 
+  rename("Group" = 1,
+         "Distrust Entirely" = 2, 
+         "Distrust" = 3, 
+         "Neutral" = 4, 
+         "Trust" = 5, 
+         "Trust Entirely" = 6)
 ```
 
+Total Responses = `r q37_response`
+
+```{r, echo=FALSE}
+q37_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
 
 ### 38. Please indicate how satisfied you were when working with the following organizations
 
@@ -687,15 +824,33 @@ q38_response<-nrow(q38)
 q38_sum<-q38 %>% 
   gather(satisfaction, answer) %>% 
   count(satisfaction, answer) %>% 
-  spread(satisfaction, n) %>% 
-  replace(., is.na(.), 0)
+  spread(answer, n) %>% 
+  replace(., is.na(.), 0) %>%
+  rename("Organization" = 1,
+         "N/A" = 2, 
+         "Extremely Unsatisfied" = 3, 
+         "Unsatisfied" = 4, 
+         "Neutral" = 5, 
+         "Satisfied" = 6,
+         "Extremely Satisfied" = 7)
+  
 ```
 
+Total Responses = `r q38_response`
+
+```{r, echo=FALSE}
+q38_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
 ### 39. What is your age?
 
 ```{r, echo=FALSE}
 q39<-survey %>% 
-  select(age) 
+  select(age) %>% 
+  na.omit()
+
+q39_response<-nrow(q39)
 
 q39_count<-q39 %>% 
   group_by(age) %>% 
@@ -707,13 +862,25 @@ q39_count<-q39 %>%
 breaks <- seq(15, 80, 5)
 
 # bucketing values into bins
-age.cut <- cut(q39$age, breaks, right=FALSE)
+age_cut <- cut(q39$age, breaks, right=FALSE)
 
-age.freq <- age.cut %>% 
+age_freq <- age_cut %>% 
   table() %>% 
   cbind() %>% 
   as.data.frame() %>% 
-  rename(count = 1)
+  rename(Count = 1)
+
+q39_sum<-age_freq %>% 
+  mutate("Age Group" = rownames(age_freq)) %>% 
+  select("Age Group", "Count")
+```
+
+Total Responses = `r q39_response`
+
+```{r, echo=FALSE}
+q39_sum %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 ### 40. How many years have you been fishing?
@@ -738,13 +905,17 @@ fishing_freq <- fishing_cut %>%
   table() %>% 
   cbind() %>% 
   as.data.frame() %>% 
-  rename(count = 1)
+  rename(Count = 1)
+
+q40_sum <- fishing_freq %>% 
+  mutate("Years Group" = rownames(fishing_freq)) %>% 
+  select("Years Group", "Count")
 ```
 
 **Total Responses** = `r q40_response`
 
 ```{r, echo=FALSE}
-fishing_freq %>% 
+q40_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
@@ -753,15 +924,24 @@ fishing_freq %>%
 ### 41.What is your level of education? (Please choose one)
 
 ```{r, echo=FALSE}
-q41_response<-survey %>% 
+q41 <- survey %>% 
   select(education) %>% 
-  na.omit() %>% 
+  na.omit()
+
+q41_response <- q41 %>% 
   nrow()
 
-q41_sum<-survey %>% 
-  select(education) %>% 
+q41_sum <- q41 %>% 
+  mutate(education = recode(education,
+                        "no_formal"=	"No Formal Education",
+                        "other"=	"Other",
+                        "primary" = "Primary School",
+                        "secondary" = "Secondary / High School",
+                        "university" = "College / University",
+                        "vocational" = "Vocational Training / Trade School")) %>% 
   group_by(education) %>% 
-  count()
+  count() %>% 
+  rename("Education Level" = 1, "Count" = 2)
 ```
 
 **Total Responses** = `r q41_response`
@@ -772,14 +952,20 @@ q41_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other
+Other  
+
 ### 42. What is your average monthly income?
 
 ```{r, echo=FALSE}
-q42_response<-survey %>% 
+q42<-survey %>% 
   select(income) %>% 
-  na.omit() %>% 
+  na.omit()
+
+q42_response<-q42 %>% 
   nrow()
+
+q42_sum<- q42 %>% 
+  summarise(mean = mean(income), n = n())
 ```
 
 **Total Responses** = `r q42_response`
@@ -816,13 +1002,17 @@ income_freq <- income_cut %>%
   table() %>% 
   cbind() %>% 
   as.data.frame() %>% 
-  rename(count = 1)
+  rename(Count = 1)
+
+q43_sum <- income_freq %>% 
+  mutate("Percent Income from Fishing" = rownames(income_freq)) %>% 
+  select("Percent Income from Fishing", "Count")
 ```
 
 **Total Responses** = `r q43_response`
 
 ```{r, echo=FALSE}
-q5_sum %>% 
+q43_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
@@ -846,13 +1036,17 @@ expense_freq <- expenses_cut  %>%
   table() %>% 
   cbind() %>% 
   as.data.frame() %>% 
-  rename(count = 1)
+  rename(Count = 1)
+
+q44_sum <- expense_freq %>% 
+  mutate("Percent Income on Expenses" = rownames(expense_freq)) %>% 
+  select("Percent Income on Expenses", "Count")
 ```
 
 **Total Responses** = `r q44_response`
 
 ```{r, echo=FALSE}
-q5_sum %>% 
+q44_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
