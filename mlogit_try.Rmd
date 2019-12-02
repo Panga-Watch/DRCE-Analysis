@@ -15,17 +15,19 @@ variables <- read.csv("int/variables.csv", stringsAsFactors = TRUE)
 ```{r}
 # try mlogit with pooled
 pooled <- read_csv("int/pooled_data_fix.csv") %>%
+  select(-STR) %>%
   left_join(variables, by = "survey_id") %>%
   select(-noalt) #read in pooled data
   
 
 map_column <- rep(c("A","B"),length(unique(pooled$survey_id))) # make a column which denotes the alternative, "A" or "B"
 
+# map_column <- rep(c("A"),length(unique(pooled$survey_id))*2)
+
 pooled_mlogit_data <- pooled %>%
-  select(-ASC, -9:-12) %>%
+  #select(-ASC, -9:-12) %>%
   mutate(alt = map_column,
          choiceid = survey_id,
-         chid = survey_id,
          choice = ifelse(RES == 1, "TRUE", "FALSE")) %>%
   select(-RES) %>%
   rename("id" = "survey_id") %>%
@@ -39,50 +41,15 @@ m_pooled <- mlogit(choice ~ sos + info + own | -1, pooled_mlogit_data_final) # r
 
 summary(m_pooled) #only pooled attributes mlogit model.. produces same results as clogit only pooled attributes
 
-actual_choose <- pooled_mlogit_data_final %>%
-  filter(choice == "TRUE") %>%
-  group_by(survey_version, choice, package, info, sos, own) %>%
-  summarise(actual_percent = 100*sum(choice)/211,
-            count = sum(choice)) ## shows actual proportion of accepted packages.
-
-sum(actual_choose$actual_percent)
-sum(actual_choose$count)
-
-
 ```
 
 Attempt to add characteristics into the model 
- - Having issues with this, because it is now giving us estimates based on the two options we gave them.  - 2:intercept is the beta value associated with each 2nd option offered I believe. 
+ - Having issues with this, because it is now giving us estimates based on the two options we gave them.  - 2:intercept is the beta value associated with each 2nd option offered I believe. This is happening because not all options are the same, therefore there must be a interaction term. 
 ```{r}
-m_pooled_char <- mlogit(choice ~ sos + info + own | community + age + income + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model?? It is comparing to each alternative offerred....
+m_pooled_char <- mlogit(choice ~ sos + info + own | community + education, pooled_mlogit_data_final) ## is this correctly adding attributes to model?? It is comparing to each alternative offerred....
 summary(m_pooled_char)
 
 fitted(m_pooled_char)
-```
-
-
-Try with just base R lm. Not sure that it makes sense to do it this way. 
-```{r}
-## Try with the base R lm like JM and JC suggested... Would this be a correct application of our data, just a simple binomial logistic regression? This does not take into account any of the trade offs between packages offered, simply looks at the attributes overall.
-
-survey_logit <- glm(choice ~ sos +  info + own , family = "binomial", data = pooled_mlogit_data_final)
-
-summary(survey_logit)
-
-fitted(survey_logit)
-
-fitted <- data.frame(probs = fitted(survey_logit)) # this shows all of the predicted probabilities for each of the choices offered apparently... 
-
-new <- pooled_mlogit_data %>%
-  select(package, STR.y, info, sos, own)
-
-model_preds <- cbind(new, fitted) 
-  #filter(package == 4) ## i think we should use lin_pred instead of fitted values for probabilities...
-
-preds_pooled <- model_preds %>%
-  group_by(package, info, sos, own) %>%
-  summarise(probs = mean(probs))
-
 ```
 
 Try to add in the opt out to use with mlogit
@@ -92,8 +59,8 @@ Try to add in the opt out to use with mlogit
 ## try standard with mlogit... not working. See this stack overflow for how to supposedely incorporate an opt out with mlogit() : https://stackoverflow.com/questions/31355145/including-opt-out-as-alternative-specific-constant-in-r-mlogit
 
 standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
-  left_join(variables, by = "survey_id") %>%
-  select(-noalt, -STR.x, -STR.y)
+  select(-STR, -noalt) %>%
+  left_join(variables, by = "survey_id") 
   
 
 map_column <- rep(c("A","B", "C"),length(unique(standard_opt_out$survey_id))) # make a column of A,B,C to denote the three choices offered... i.e. package A, package B, opt out.
@@ -102,33 +69,18 @@ standard_mlogit_data <- standard_opt_out %>%
   select(-interviewer, -interviewer_Org) %>%
   mutate(alt = map_column,
          choiceid = survey_id,
-         chid = survey_id,
          choice = ifelse(RES == 1, "TRUE", "FALSE")) %>%
   select(-RES) %>%
   rename("id" = "survey_id") %>%
   mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice))
 
-standard_mlogit_data$optout <- factor(ifelse(standard_mlogit_data$alt == "C", "1", "-1")) # add the alternative specific constant which denotes the opt out choice
+standard_mlogit_data$optout <- factor(ifelse(standard_mlogit_data$alt == "C", "1", "0")) # add the alternative specific constant which denotes the opt out choice
 
 standard_mlogit_data_final <- mlogit.data(standard_mlogit_data, shape = c("long"), choice = "choice", alt.var = "alt", id.var  = "id") #put data into format that can work with mlogit
 
 standard_mlogit_data_final <- within(standard_mlogit_data_final, own <- relevel(own, ref = 4)) #change reference level for ownership variable. 
 
-standard_mlogit <- mlogit(choice ~sos + info + own , standard_mlogit_data_final, reflevel = 'C')
-
-actual_choose_standard <- standard_mlogit_data_final %>%
-  #filter(choice == "TRUE") %>%
-  group_by(survey_version, choice, package, info, sos, own) %>%
-  summarise(actual_percent = 100*sum(choice)/211,
-            count = sum(choice)) ## look at survey version 1... package 18 (1,1,2) was never chosen, and package 2 (1,1,3) was always chosen
-
-# 2 (1,1,3) vs 1 (0, 1, 2)
-# 2 (1,1,3) vs 8 (0, 1, 4)
-# 8 and 1 never chosen when compared to 2 
-# Tells us that in these cases respodents likely valued ownership of data over anonymity 
-
-sum(actual_choose_standard$actual_percent)
-sum(actual_choose_standard$count)
+standard_mlogit <- mlogit(choice ~sos + info + own + optout, standard_mlogit_data_final, reflevel = "C")
 
 packages <- read_csv("raw/packages.csv") %>%
    mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1))
@@ -164,8 +116,6 @@ model_preds %>%
 preds_pooled <- model_preds %>%
   group_by(package, info, sos, own) %>%
   summarise(probs = mean(probs), lin_pred_probs = mean(lin_pred_probs))
-
-exp(m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)/(1 + exp( m_pooled$coefficients[1]*0 + m_pooled$coefficients[2] + m_pooled$coefficients[3] +  m_pooled$coefficients[4]*0 +  m_pooled$coefficients[5]*0)) ## theoretically this should be the probability for sos =0, info = 1, and own = 1... first survey done... doesn't match the outcome of fitted()... but does match output of linear predictor
 
 write.csv(preds_pooled, "output/mlogit_pooled_probs.csv", row.names = FALSE)
 
@@ -351,16 +301,6 @@ write.csv(final_combined_mlogit_marg_probs, "output/unformatted_mlogit_pooled_ma
 ```
 
 
-```{r}
-library("mlogit")
-data("Heating", package = "mlogit")
-H <- mlogit.data(Heating, shape = "wide", choice = "depvar", varying = c(3:12))
-m <- mlogit(depvar ~ ic + oc | 0, H)
-summary(m)
-
-mi2 <- mlogit(depvar ~ oc + ic | income, H, reflevel = "hp")
-summary(mi2)
-```
 
 
 
