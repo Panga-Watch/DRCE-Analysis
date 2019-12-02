@@ -34,6 +34,9 @@ header_key <- read_csv("raw/survey_header_key.csv")
 choice_key <- read_csv("raw/choice_key.csv") %>% 
   rename(question = 1)
 
+choice_value<- read_csv("raw/choice_value_key.csv") %>% 
+  rename(column_header = 1)
+
 #clean choice key for relevant columns in analysis 
 qual <- choice_key %>% 
   filter(type == "text") %>% 
@@ -59,7 +62,8 @@ totals <- survey %>%
   arrange(question) %>% 
   na.omit() %>% 
   filter(question != 0) %>% 
-  select(question, sub_question, column_header, n)
+  select(question, sub_question, column_header, n) %>% 
+  left_join(choice_value)
 
 totals %>% 
   kable() %>% 
