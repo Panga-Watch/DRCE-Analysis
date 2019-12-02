@@ -21,8 +21,27 @@ theme_set(theme_pubr())
 
 ```{r, include=FALSE}
 # Read in all of the raw data
-survey <- read_csv("raw/master_survey_resp.csv")
+survey <- read_csv("raw/master_survey_resp.csv") %>% 
+  mutate(wtp_cat = ifelse(wtr_4 == "n", "pro",
+                          ifelse( wtp_1 == "n", "zero",
+                                  ifelse(package_nopackage == 1, "pay", "rec")))) %>% 
+  mutate(wtp_cat = as.factor(wtp_cat))
+
+header_key <- read_csv("raw/survey_header_key.csv")
 ```
+
+```{r, echo=FALSE}
+totals <- survey %>% 
+  gather(column_header,resp) %>% 
+  na.omit() %>% 
+  group_by(column_header) %>% 
+  count() %>% 
+  left_join(header_key) %>% 
+  separate(question, c("question", "sub_question")) %>% 
+  mutate(question = as.numeric(question))
+```
+
+
 Question label 
 Purpose of Survey
 Survey ID
@@ -32,6 +51,7 @@ Affiliated Organization
 1. Country
 2. Community Name
 3. Gender of Interviewed
+
 
 
 ### 4. Fishing Gear Used 
@@ -69,7 +89,8 @@ q4_sum %>%
 
 ggplot(q4_sum, aes(x = reorder(Gear, -Count), y = Count)) +
   geom_bar(stat = "identity") +
-  theme_pubclean()
+  xlab("Gear")+
+  theme_classic()
 ```
 
 Other  
@@ -110,7 +131,8 @@ q5_sum %>%
 
 ggplot(q5_sum, aes(x = reorder(Status, -Count), y = Count)) +
   geom_bar(stat = "identity") +
-  theme_minimal()
+  xlab("Ownership Status")+
+  theme_classic()
 ```
 
 ### 6. Vessel Characteristics
@@ -140,8 +162,10 @@ q6a_sum %>%
   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 
 ggplot(q6a, aes(x = boat_length_m)) +
-    geom_histogram(binwidth=5, color="white")
-  
+  geom_histogram(binwidth=5, color="white")+
+  xlab("Length (m)")+
+  ylab("Count")+
+  theme_classic()
 ```
 
 #### b. Material

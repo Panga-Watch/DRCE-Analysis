@@ -19,9 +19,16 @@ theme_set(theme_pubr())
 
 ```{r, include=FALSE}
 # Read in all of the raw data
-survey <- read_csv("raw/master_survey_resp.csv")
+
+survey <- read_csv("raw/master_survey_resp.csv") %>% 
+  mutate(wtp_cat = ifelse(wtr_4 == "n", "pro",
+                          ifelse( wtp_1 == "n", "zero",
+                                  ifelse(package_nopackage == 1, "pay", "rec")))) %>% 
+  mutate(wtp_cat = as.factor(wtp_cat))
+
 version <- read_csv("raw/version_to_package.csv") %>% 
   mutate(choice = ifelse(package <=16 , 1, 2))
+
 packages <- read_csv("raw/packages.csv")
 ```
 
@@ -32,20 +39,26 @@ package_abc_df<- packages %>%
   mutate(package_abc = letters[1:16]) %>% 
   select(-package) %>% 
   right_join(packages) %>% 
-  left_join(version)
+  left_join(version) %>% 
+  mutate(sos = sos - 1) %>% 
+  mutate(info = ifelse(info ==2, 0,1))
 ```
 
 Survey Version
 
 ```{r}
-version_count<-survey %>% 
+version_count<-survey %>%
+  mutate(survey_version = as.factor(survey_version)) %>% 
   group_by(survey_version) %>% 
   count() %>% 
   rename("Version"=1, "Count"=2) %>% 
-  arrange(Version)
+  arrange(Version) 
+
+sv_mean<-mean(version_count$Count)
 
 ggplot(version_count, aes(x = Version, y = Count)) +
   geom_bar(stat = "identity") +
+  geom_hline(yintercept=round(sv_mean, 0), linetype="dashed", color = "red") +
   theme_classic()
 ```
 
@@ -58,12 +71,15 @@ package_count <- survey %>%
   group_by(package_abc) %>% 
   count()
 
+pack_mean<-mean(package_count$n)
+
 package_count %>% 
   kable() %>% 
   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 
 ggplot(package_count, aes(x = package_abc, y = n)) +
   geom_bar(stat = "identity") +
+  geom_hline(yintercept=round(pack_mean, 0), linetype="dashed", color = "red") +
   theme_classic()
 ```
 
@@ -76,5 +92,9 @@ package_choice<- survey %>%
   rename("observed"=2) %>% 
   left_join(package_count) %>% 
   mutate(prop_choice = round(observed/n, 2))
+
+package_choice %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 ```
 
