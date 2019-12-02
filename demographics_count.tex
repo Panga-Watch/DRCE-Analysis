@@ -1,0 +1,451 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{unicode=true,
+            pdftitle={Demographic Distribution},
+            pdfauthor={BR},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\providecommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+
+  \title{Demographic Distribution}
+    \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+    \author{BR}
+    \preauthor{\centering\large\emph}
+  \postauthor{\par}
+      \predate{\centering\large\emph}
+  \postdate{\par}
+    \date{28/11/2019}
+
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+
+\begin{document}
+\maketitle
+
+Question label Purpose of Survey Survey ID Survey Version Name of
+Interviewer Affiliated Organization 1. Country 2. Community Name 3.
+Gender of Interviewed
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  In the last 12 months, what fishing gear have you used?
+
+  \begin{table}[H]
+  \centering
+  \begin{tabular}{l|r|r}
+  \hline
+  Gear & Count & Percent\\
+  \hline
+  Hand Line & 87 & 41\\
+  \hline
+  Spear & 9 & 4\\
+  \hline
+  Traps & 56 & 27\\
+  \hline
+  Stationary Net & 60 & 29\\
+  \hline
+  Mobile Net & 117 & 56\\
+  \hline
+  Stationary Line & 15 & 7\\
+  \hline
+  Other & 45 & 21\\
+  \hline
+  *Buceo & 33 & 16\\
+  \hline
+  \end{tabular}
+  \end{table}
+\end{enumerate}
+
+Other
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{4}
+\tightlist
+\item
+  For fishing purposes, do you own a boat, share a boat, or rent a boat
+  from others, or do not use a boat?
+
+  \begin{table}[H]
+  \centering
+  \begin{tabular}{l|r}
+  \hline
+  boat\_status & n\\
+  \hline
+  own & 134\\
+  \hline
+  rent & 3\\
+  \hline
+  share\_collective & 15\\
+  \hline
+  share\_employee & 59\\
+  \hline
+  \end{tabular}
+  \end{table}
+\item
+  For your primary fishing vessel, please describe the boat in the
+  following aspects:
+\end{enumerate}
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi}.}
+\item
+  Length
+\item
+  Material
+\item
+  Is the boat motorized
+\item
+  Is there an onboard power/ electricity source?
+\end{enumerate}
+
+Comments
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{6}
+\tightlist
+\item
+  Please check all the types of technology that you use at least once a
+  week, if any
+
+  \begin{table}[H]
+  \centering
+  \begin{tabular}{l|r|r}
+  \hline
+  Technology & Count & Percent\\
+  \hline
+  Smart-phone with Internetconnection & 155 & 77\\
+  \hline
+  Google Maps or other GPSapps & 74 & 37\\
+  \hline
+  Socialmedia (IG, FB, Twitter) & 81 & 40\\
+  \hline
+  Other & 14 & 7\\
+  \hline
+  None & 33 & 16\\
+  \hline
+  \end{tabular}
+  \end{table}
+\end{enumerate}
+
+Other
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{7}
+\tightlist
+\item
+  Please check all the types of technology that you use or have used at
+  some point for your fishing activity
+
+  \begin{table}[H]
+  \centering
+  \begin{tabular}{l|r|r}
+  \hline
+  Technology & Count & Percent\\
+  \hline
+  VHF Radio & 65 & 32\\
+  \hline
+  FishFinder (Sonar) & 49 & 24\\
+  \hline
+  Surveillance Camera & 0 & 0\\
+  \hline
+  Catch and Data Collection App & 1 & 0\\
+  \hline
+  Vessel Tracking Technology & 52 & 25\\
+  \hline
+  GPS & 97 & 47\\
+  \hline
+  Other & 79 & 38\\
+  \hline
+  None & 81 & 39\\
+  \hline
+  \end{tabular}
+  \end{table}
+\end{enumerate}
+
+\begin{verbatim}
+## [1] 206
+\end{verbatim}
+
+Other
+
+\emph{TEXT} 9. What type of tracking technology did you use on your
+vessel? \emph{TEXT} 10. Please list some positive aspects of this
+technology \emph{TEXT} 11. Please list some negative aspects of this
+technology \emph{TEXT}
+
+\begin{verbatim}
+12. You have to install and use one or the other tracking package for a year. which would you be more likely to install and use consistently on every fishing trip?
+13. Would you prefer the package you chose or no tracking package at all?
+14.i. Would you be willing to pay $5 per month for the package you chose?
+14.ii. Would you be willing to pay $10 per month for the package you chose?
+14.iii. Would you be willing to pay 15 per month for the package you chose?
+14.iv. Would you be willing to pay $20 per month for the package you chose?
+15.i. Would you be willing to accept a tracking package for $5 per month?
+15.ii. Would you be willing to accept a tracking package for $10 per month?
+15.iii. Would you be willing to accept a tracking package for $15 per month?
+15.iv. Would you be willing to accept a tracking package for $20 per month?
+
+16. Please mention any negatives that this technology might bring to you
+17. Please mention any other positives that this technology might bring to you
+\end{verbatim}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{17}
+\item
+  Please choose 3 benefits you want from the tracking device, if it is
+  installed in your boat
+\item
+  In general, why do you think you and your community may or may not not
+  adopt this technology?
+\end{enumerate}
+
+\emph{TEXT}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{19}
+\item
+  Combining all seasons, what are your top three targeted fisheries?
+\item
+  What percent of the total catch (out of 100\%) goes to\ldots{}
+\end{enumerate}
+
+\begin{verbatim}
+## q21_na_count
+##  0  1  2  3  4  5 
+## 87  5 25 20 73  1
+\end{verbatim}
+
+\begin{verbatim}
+## 
+##   0  20  45  60  90  95 100 120 
+##   3   1   1   1   1   1 202   1
+\end{verbatim}
+
+\begin{verbatim}
+##  fraction_personal fraction_neighbor fraction_local_trade fraction_export
+##  Min.   :  0       Min.   : 0        Min.   :  0          Min.   :  0    
+##  1st Qu.:  0       1st Qu.: 0        1st Qu.:  0          1st Qu.:  0    
+##  Median :  0       Median : 0        Median : 22          Median :  0    
+##  Mean   :  5       Mean   : 2        Mean   : 46          Mean   :  5    
+##  3rd Qu.:  5       3rd Qu.: 0        3rd Qu.:100          3rd Qu.:  0    
+##  Max.   :100       Max.   :70        Max.   :100          Max.   :100    
+##  fraction_other
+##  Min.   :  0   
+##  1st Qu.:  0   
+##  Median :  0   
+##  Mean   : 41   
+##  3rd Qu.:100   
+##  Max.   :100
+\end{verbatim}
+
+\begin{verbatim}
+##    fraction_personal    fraction_neighbor fraction_local_trade 
+##                  145                  179                   95 
+##      fraction_export       fraction_other 
+##                  189                  117
+\end{verbatim}
+
+\begin{verbatim}
+##    fraction_personal    fraction_neighbor fraction_local_trade 
+##                   57                   23                  107 
+##      fraction_export       fraction_other 
+##                   13                   85
+\end{verbatim}
+
+Other 22. Are you part of a fishing organization?
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{22}
+\tightlist
+\item
+  What type of organization?
+\end{enumerate}
+
+Other 24. What role do you have in the organization?
+
+Other 25. How many members does the organization have?
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{25}
+\tightlist
+\item
+  Who is allowed to fish for your \#1 targeted fishery,
+  \$\{target\_species\_one\} ?
+\end{enumerate}
+
+Other 27. Please indicate what regulations exist for your \#1 targeted
+fisherie, \$\{target\_species\_one\}.
+
+Other 28. Who is responsible for enforcement in your community?
+
+Other 29. On average, how often are these fishing regulations enforced?
+
+Other
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{29}
+\item
+  How severe is the punishment when a person gets caught violating the
+  fishing regulations?
+\item
+  Are there any closed areas in your fishing area?
+\item
+  Wat do you think are the biggest problems your fishery faces?
+\end{enumerate}
+
+\emph{TEXT}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{32}
+\tightlist
+\item
+  How do you think the problems you mentioned can be solved?
+\end{enumerate}
+
+\emph{TEXT}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{33}
+\item
+  Please rank the following problems from 1 to 4, where 1 has the
+  strongest impact on your fishing activity and 4 has the least impact
+  on your fishing activity
+\item
+  In the last few years, the current fish catch has\ldots{}
+\item
+  How much do you agree with the following statements
+\item
+  Please indicate how much you trust the following groups
+\item
+  Please indicate how satisfied you were when working with the following
+  organizations
+\item
+  What is your age?
+\item
+  How many years have you been fishing?
+\end{enumerate}
+
+\begin{verbatim}
+##  years_fishing  
+##  Min.   : 1.00  
+##  1st Qu.:15.00  
+##  Median :22.00  
+##  Mean   :23.73  
+##  3rd Qu.:31.00  
+##  Max.   :98.00
+\end{verbatim}
+
+41.What is your level of education? (Please choose one)
+
+Other 42. What is your average monthly income?
+
+\#income Breaks
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{42}
+\item
+  What percent (out of 100\%) of your annual income comes from fishing?
+\item
+  What percent (out of 100\%) of your income is spent on expenses
+  related to fishing?
+\end{enumerate}
+
+Photo of the Fishing Vessel if available (or other relevant material)
+Any additional questions, comments, notes, etc\ldots{}.
+
+
+\end{document}

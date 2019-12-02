@@ -14,6 +14,8 @@ library(here)
 library(DT)
 library(kableExtra)
 library(ggplot2)
+library(ggpubr)
+theme_set(theme_pubr())
 ```
 
 
@@ -53,23 +55,31 @@ q4_sum<-q4 %>%
   rename_at(vars(oldnames4), ~ newnames4)%>% 
   summarise_all(sum, na.rm = TRUE) %>% 
   gather(gear, Count) %>% 
-  mutate(Percent = round((Count/q4_response)*100, 0)) %>% 
-  rename(Gear = 1)
+#  mutate(Percent = round((Count/q4_response)*100, 0)) %>% 
+  rename(Gear = 1) %>% 
+  arrange(-Count)
 ```
+
 **Total Responses** = `r q4_response`
 
 ```{r, echo=FALSE}
 q4_sum %>% 
   kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+
+ggplot(q4_sum, aes(x = reorder(Gear, -Count), y = Count)) +
+  geom_bar(stat = "identity") +
+  theme_pubclean()
 ```
 
 Other  
+
 ```{r}
 #Other Gear Indicated 
 ```
 
 ### 5. Status of Boat Ownership 
+
 For fishing purposes, do you own a boat, share a boat, or rent a boat from others, or do not use a boat?
 ```{r, echo=FALSE}
 q5_response<-survey %>% 
@@ -88,13 +98,19 @@ q5_sum<-survey %>%
                              "none"=	"Do not use a boat to fish")) %>% 
   group_by(boat_status) %>% 
   count() %>%
-  rename("status"=1, "Count"=2)
+  rename("Status"=1, "Count"=2)
 ```
+
+**Total Responses** = `r q5_response`
 
 ```{r, echo=FALSE}
 q5_sum %>% 
   kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+
+ggplot(q5_sum, aes(x = reorder(Status, -Count), y = Count)) +
+  geom_bar(stat = "identity") +
+  theme_minimal()
 ```
 
 ### 6. Vessel Characteristics
@@ -102,9 +118,11 @@ For your primary fishing vessel, please describe the boat in the following aspec
 
 #### a. Length
 ```{r, echo=FALSE}
-q6a_response<-survey %>% 
+q6a <- survey %>% 
   select(starts_with("boat_length")) %>% 
-  na.omit() %>% 
+  na.omit() 
+
+q6a_response<- q6a %>% 
   nrow()
 
 q6a_sum<-survey %>% 
@@ -112,10 +130,18 @@ q6a_sum<-survey %>%
   group_by(boat_length_m) %>% 
   count() %>% 
   rename("Length (m)"=1, "Count"=2)
+```
 
+**Total Responses** = `r q6a_response`
+
+```{r, echo=FALSE}
 q6a_sum %>% 
   kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+
+ggplot(q6a, aes(x = boat_length_m)) +
+    geom_histogram(binwidth=5, color="white")
+  
 ```
 
 #### b. Material
@@ -134,13 +160,12 @@ q6b_sum<-survey %>%
   count() %>%
   rename("Material"=1, "Count"=2)
 ```
-Total Responses = `r q6b_response`
+**Total Responses** = `r q6b_response`
 
 ```{r, echo=FALSE}
 q6b_sum %>% 
   kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 ```
 
 #### c. Is the boat Motorized?
@@ -164,7 +189,7 @@ Total Responses = `r q6c_response`
 ```{r, echo=FALSE}
 q6c_sum %>% 
   kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 ```
 
 #### d. Is there an onboard power/ electricity source?
@@ -188,7 +213,7 @@ Total Responses = `r q6d_response`
 ```{r, echo=FALSE}
 q6d_sum %>% 
   kable() %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 ```
 
 Comments
@@ -270,11 +295,14 @@ q8_sum %>%
 
 Other  
 
+*TEXT*
+
 ```{r, include=FALSE}
 q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 ```
 
-*TEXT*
+
+
 9. What type of tracking technology did you use on your vessel?
 *TEXT*
 10. Please list some positive aspects of this technology
@@ -282,8 +310,9 @@ q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 11. Please list some negative aspects of this technology
 *TEXT*
 
-````
+
 12. You have to install and use one or the other tracking package for a year. which would you be more likely to install and use consistently on every fishing trip?
+
 13. Would you prefer the package you chose or no tracking package at all?
 14.i. Would you be willing to pay $5 per month for the package you chose?
 14.ii. Would you be willing to pay $10 per month for the package you chose?
@@ -296,7 +325,7 @@ q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 
 16. Please mention any negatives that this technology might bring to you
 17. Please mention any other positives that this technology might bring to you
-````
+
 
 ### 18. Please choose 3 benefits you want from the tracking device, if it is installed in your boat
 ```{r, echo=FALSE}

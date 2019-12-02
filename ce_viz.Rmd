@@ -1,0 +1,80 @@
+---
+title: "Choice Experiment Relevant Distributionn"
+author: "BR"
+date: "01/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(DT)
+library(kableExtra)
+library(ggplot2)
+library(ggpubr)
+theme_set(theme_pubr())
+```
+
+
+```{r, include=FALSE}
+# Read in all of the raw data
+survey <- read_csv("raw/master_survey_resp.csv")
+version <- read_csv("raw/version_to_package.csv") %>% 
+  mutate(choice = ifelse(package <=16 , 1, 2))
+packages <- read_csv("raw/packages.csv")
+```
+
+```{r, include=FALSE}
+#making df for alphabetical packages 
+package_abc_df<- packages %>% 
+  filter(package <=16) %>% 
+  mutate(package_abc = letters[1:16]) %>% 
+  select(-package) %>% 
+  right_join(packages) %>% 
+  left_join(version)
+```
+
+Survey Version
+
+```{r}
+version_count<-survey %>% 
+  group_by(survey_version) %>% 
+  count() %>% 
+  rename("Version"=1, "Count"=2) %>% 
+  arrange(Version)
+
+ggplot(version_count, aes(x = Version, y = Count)) +
+  geom_bar(stat = "identity") +
+  theme_classic()
+```
+
+Packages Offered 
+
+```{r echo=FALSE}
+package_count <- survey %>% 
+  select(survey_version) %>% 
+  right_join(package_abc_df) %>% 
+  group_by(package_abc) %>% 
+  count()
+
+package_count %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+
+ggplot(package_count, aes(x = package_abc, y = n)) +
+  geom_bar(stat = "identity") +
+  theme_classic()
+```
+
+Choice Experiment Visual Results 
+```{r}
+package_choice<- survey %>% 
+  left_join(package_abc_df) %>% 
+  group_by(package_abc) %>% 
+  count() %>%
+  rename("observed"=2) %>% 
+  left_join(package_count) %>% 
+  mutate(prop_choice = round(observed/n, 2))
+```
+
