@@ -1,10 +1,12 @@
 ---
-title: "Demographic Distribution"
+title: "Survey Response Distribution"
 author: "BR"
 date: "28/11/2019"
 output:
-  html_document: default
-  pdf_document: default
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false 
 ---
 
 ```{r setup, include=FALSE}
@@ -28,33 +30,65 @@ survey <- read_csv("raw/master_survey_resp.csv") %>%
   mutate(wtp_cat = as.factor(wtp_cat))
 
 header_key <- read_csv("raw/survey_header_key.csv")
+
+choice_key <- read_csv("raw/choice_key.csv") %>% 
+  rename(question = 1)
+
+#clean choice key for relevant columns in analysis 
+qual <- choice_key %>% 
+  filter(type == "text") %>% 
+  rename(question = 1)
+
+quant <- header_key %>% 
+  left_join(choice_key) %>% 
+  filter(type!="text")
 ```
 
+# Results  
+
 ```{r, echo=FALSE}
+#creating summary df with total response count for each column
 totals <- survey %>% 
   gather(column_header,resp) %>% 
   na.omit() %>% 
   group_by(column_header) %>% 
   count() %>% 
-  left_join(header_key) %>% 
+  right_join(quant) %>% 
   separate(question, c("question", "sub_question")) %>% 
-  mutate(question = as.numeric(question))
+  mutate(question = as.numeric(question)) %>% 
+  arrange(question) %>% 
+  na.omit() %>% 
+  filter(question != 0) %>% 
+  select(question, sub_question, column_header, n)
+
+totals %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 ```
 
+# Section Results  
 
-Question label 
-Purpose of Survey
-Survey ID
-Survey Version
-Name of Interviewer
-Affiliated Organization
-1. Country
-2. Community Name
-3. Gender of Interviewed
+Question label   
 
+Purpose of Survey  
 
+Survey ID  
 
-### 4. Fishing Gear Used 
+Survey Version  
+
+Name of Interviewer  
+
+Affiliated Organization  
+
+1. Country  
+
+2. Community Name  
+
+3. Gender of Interviewed  
+
+## Fisher Characteristics  
+
+### 4. Fishing Gear
 In the last 12 months, what fishing gear have you used?
 ```{r, echo=FALSE}
 q4<-survey %>% 
@@ -99,7 +133,7 @@ Other
 #Other Gear Indicated 
 ```
 
-### 5. Status of Boat Ownership 
+### 5. Vessel Ownership
 
 For fishing purposes, do you own a boat, share a boat, or rent a boat from others, or do not use a boat?
 ```{r, echo=FALSE}
@@ -266,7 +300,8 @@ q7_sum<-q7 %>%
   mutate(Percent = round((Count/q7_response)*100, 0)) %>% 
   rename(Technology = 1)
 ```
-Total Responses = `r q7_response`
+
+**Total Responses** = `r q7_response`  
 
 ```{r, echo=FALSE}
 q7_sum %>% 
@@ -275,11 +310,12 @@ q7_sum %>%
 ```
 
 Other  
+
 ```{r, include=FALSE}
 unique(unlist(strsplit(as.character(survey$other_tech), ",")))
 ```
 
-### 8. Technology Use During Fishing Activity 
+### 8. Fishing Technology Use 
 
 Please check all the types of technology that you use or have used at some point for your fishing activity
 
@@ -309,7 +345,7 @@ q8_sum<-q8 %>%
   rename(Technology = 1)
 ```
 
-Total Responses = `r q8_response`
+**Total Responses** = `r q8_response`
 
 ```{r, echo=FALSE}
 q8_sum %>% 
@@ -334,6 +370,7 @@ q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 11. Please list some negative aspects of this technology
 *TEXT*
 
+## Choice Experiment  
 
 12. You have to install and use one or the other tracking package for a year. which would you be more likely to install and use consistently on every fishing trip?
 
@@ -351,7 +388,9 @@ q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 17. Please mention any other positives that this technology might bring to you
 
 
-### 18. Please choose 3 benefits you want from the tracking device, if it is installed in your boat
+### 18. Desired Benefits
+
+Please choose 3 benefits you want from the tracking device, if it is installed in your boat
 ```{r, echo=FALSE}
 
 ```
@@ -360,10 +399,12 @@ q8_other<-unique(unlist(strsplit(as.character(survey$other_fishtech), ",")))
 
 *TEXT*
 
+## Catch  
+
 20. Combining all seasons, what are your top three targeted fisheries?
 
 
-### 21. Market Distribution of Cacth
+### 21. Market Distribution  
 
 What percent of the total catch (out of 100%) goes to...
 ```{r, echo=FALSE}
@@ -397,7 +438,7 @@ sapply(q21_clean, function(x)length(which(x==0)))
 #number of non-zero fraction per column
 sapply(q21_clean, function(x)length(which(x!=0)))
 ```
-Total Responses = `r q21_response` *Number of responses that total 100%
+**Total Responses** = `r q21_response` *Number of responses that total 100%
 
 ```{r, echo=FALSE}
 q21_plot<-q21_clean %>% 
@@ -416,7 +457,11 @@ ggplot(q21_plot, aes(x=Fraction))+
 
 Other
 
-### 22. Are you part of a fishing organization?
+## Fishing Organization  
+
+### 22. Membership 
+
+Are you part of a fishing organization?
 ```{r, echo=FALSE}
 q22_response<-survey %>% 
   select(starts_with("fishing_organization")) %>% 
@@ -433,7 +478,7 @@ q22_sum<-survey %>%
   rename("Membership" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q22_response`
+**Total Responses** = `r q22_response`
 
 ```{r, echo=FALSE}
 q22_sum %>% 
@@ -442,7 +487,9 @@ q22_sum %>%
 ```
 
 
-### 23. What type of organization?
+### 23. Organization Type  
+
+What type of organization?
 ```{r, echo=FALSE}
 q23<-survey %>% 
   filter(fishing_organization=="y") %>% 
@@ -464,7 +511,7 @@ q23_sum<-q23 %>%
   rename("Type of Organization" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q23_response`
+**Total Responses** = `r q23_response`
 
 ```{r, echo=FALSE}
 q23_sum %>% 
@@ -474,7 +521,9 @@ q23_sum %>%
 
 Other  
 
-### 24. What role do you have in the organization?
+### 24. Role in Organization 
+
+What role do you have in the organization?
 ```{r, echo=FALSE}
 q24<-survey %>% 
   filter(fishing_organization=="y") %>% 
@@ -496,7 +545,7 @@ q24_sum<-q24 %>%
   rename("Role in Organization" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q24_response`
+**Total Responses** = `r q24_response`
 
 ```{r, echo=FALSE}
 q24_sum %>% 
@@ -506,7 +555,9 @@ q24_sum %>%
 
 Other  
 
-### 25. How many members does the organization have?
+### 25. Organization Size   
+
+How many members does the organization have?
 ```{r, echo=FALSE}
 q25<-survey %>% 
   filter(fishing_organization=="y") %>% 
@@ -528,7 +579,7 @@ q25_sum<- q25 %>%
   rename("Members in Organization" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q25_response`
+**Total Responses** = `r q25_response`
 
 ```{r, echo=FALSE}
 q25_sum %>% 
@@ -536,7 +587,11 @@ q25_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-### 26. Who is allowed to fish for your #1 targeted fishery, ${target_species_one} ?
+## Governance
+
+### 26. Access to Fishery  
+
+Who is allowed to fish for your #1 targeted fishery?
 
 ```{r, echo=FALSE}
 q26<-survey %>% 
@@ -558,7 +613,7 @@ q26_sum<-q26 %>%
   rename("Access to Target Species" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q26_response`
+**Total Responses** = `r q26_response`
 
 ```{r, echo=FALSE}
 q26_sum %>% 
@@ -569,7 +624,9 @@ q26_sum %>%
 
 Other  
 
-### 27. Please indicate what regulations exist for your #1 targeted fisherie, ${target_species_one}.
+### 27. Regulations  
+
+Please indicate what regulations exist for your #1 targeted fisherie.
 
 ```{r, echo=FALSE}
 q27<- survey %>% 
@@ -589,7 +646,7 @@ q27_sum<-q27 %>%
   rename("Restriction Type" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q27_response`
+**Total Responses** = `r q27_response`
 
 ```{r, echo=FALSE}
 q27_sum %>% 
@@ -599,7 +656,9 @@ q27_sum %>%
 
 Other  
 
-### 28. Who is responsible for enforcement in your community?
+### 28. Enforcement  
+
+Who is responsible for enforcement in your community?
 ```{r, echo=FALSE}
 q28<-survey %>% 
   select(starts_with("enforcement")) %>% 
@@ -619,7 +678,7 @@ q28_sum<-q28 %>%
   rename("Enforcement Official" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q28_response`
+**Total Responses** = `r q28_response`
 
 ```{r, echo=FALSE}
 q28_sum %>% 
@@ -630,7 +689,9 @@ q28_sum %>%
 
 Other  
 
-### 29. On average, how often are these fishing regulations enforced?
+### 29. Enforcement Frequency  
+
+On average, how often are these fishing regulations enforced?
 
 ```{r, echo=FALSE}
 q29<-survey %>% 
@@ -654,7 +715,7 @@ q29_sum<-q29 %>%
   rename("Enforcement Interval"=1, "Count"=2)
 ```
 
-Total Responses = `r q29_response`
+**Total Responses** = `r q29_response`
 
 ```{r, echo=FALSE}
 q29_sum %>% 
@@ -664,7 +725,7 @@ q29_sum %>%
 
 Other  
 
-### 30. Severity of Punishment for Violating Fishing Regulations 
+### 30. Severity of Punishment  
 
 How severe is the punishment when a person gets caught violating the fishing regulations?
 ```{r, echo=FALSE}
@@ -687,7 +748,7 @@ q30_sum<-q30 %>%
   rename("Severity"=1, "Count"=2)
 ```
 
-Total Responses = `r q30_response`
+**Total Responses** = `r q30_response`
 
 ```{r, echo=FALSE}
 q30_sum %>% 
@@ -695,7 +756,9 @@ q30_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-### 31. Are there any closed areas in your fishing area?
+### 31. Closed Areas    
+
+Are there any closed areas in your fishing area?
 
 ```{r, echo=FALSE}
 q31<-survey %>% 
@@ -714,7 +777,7 @@ q31_sum <- q31 %>%
   rename("MPA"=1, "Count"=2)
 ```
 
-Total Responses = `r q31_response`
+**Total Responses** = `r q31_response`
 
 ```{r, echo=FALSE}
 q31_sum %>% 
@@ -731,7 +794,10 @@ q31_sum %>%
 
 **TEXT**
 
-### 34. Ranking of Problems During Fishing Activity
+## Perception  
+
+### 34. Rank: Fishing Problems  
+
 Please rank the following problems from 1 to 4, where 1 has the strongest impact on your fishing activity and 4 has the least impact on your fishing activity
 
 ```{r, echo=FALSE}
@@ -764,7 +830,7 @@ q34_sum_omit.na<-q34 %>%
                           "weather" = "Extreme Weather Events")) 
 ```
 
-Total Responses = `r q34_response`
+**Total Responses** = `r q34_response`
 
 ```{r, echo=FALSE}
 q34_sum_omit.na %>% 
@@ -773,7 +839,7 @@ q34_sum_omit.na %>%
 ```
 
 
-### 35. Catch Trends
+### 35. Catch Trends  
 
 In the last few years, the current fish catch has…
 
@@ -797,7 +863,7 @@ q35_sum<-q35 %>%
   rename("Trend" = 1, "Count" = 2)
 ```
 
-Total Responses = `r q35_response`
+**Total Responses** = `r q35_response`
 
 ```{r, echo=FALSE}
 q35_sum %>% 
@@ -805,7 +871,11 @@ q35_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-### 36. How much do you agree with the following statements
+## Opinion  
+
+### 36. Statements  
+
+How much do you agree with the following statements
 
 ```{r, echo=FALSE}
 q36<-survey %>% 
@@ -827,7 +897,7 @@ q36_sum<-q36 %>%
          "Strongly Agree" = 6)
 ```
 
-Total Responses = `r q36_response`
+**Total Responses** = `r q36_response`
 
 ```{r, echo=FALSE}
 q36_sum %>% 
@@ -836,7 +906,9 @@ q36_sum %>%
 ```
 
 
-### 37. Please indicate how much you trust the following groups
+### 37. Groups  
+
+Please indicate how much you trust the following groups
 
 ```{r, echo=FALSE}
 q37<-survey %>% 
@@ -857,7 +929,7 @@ q37_sum<-q37 %>%
          "Trust Entirely" = 6)
 ```
 
-Total Responses = `r q37_response`
+**Total Responses** = `r q37_response`
 
 ```{r, echo=FALSE}
 q37_sum %>% 
@@ -865,7 +937,9 @@ q37_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-### 38. Please indicate how satisfied you were when working with the following organizations
+### 38. Organizations  
+
+Please indicate how satisfied you were when working with the following organizations
 
 ```{r, echo=FALSE}
 q38<-survey %>% 
@@ -889,14 +963,19 @@ q38_sum<-q38 %>%
   
 ```
 
-Total Responses = `r q38_response`
+**Total Responses** = `r q38_response`
 
 ```{r, echo=FALSE}
 q38_sum %>% 
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
-### 39. What is your age?
+
+## Demographics  
+
+### 39. Age
+
+What is your age?
 
 ```{r, echo=FALSE}
 q39<-survey %>% 
@@ -928,7 +1007,7 @@ q39_sum<-age_freq %>%
   select("Age Group", "Count")
 ```
 
-Total Responses = `r q39_response`
+**Total Responses** = `r q39_response`
 
 ```{r, echo=FALSE}
 q39_sum %>% 
@@ -936,7 +1015,9 @@ q39_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-### 40. How many years have you been fishing?
+### 40. Fishing Experience  
+
+How many years have you been fishing?
 
 ```{r, echo=FALSE}
 q40<-survey %>% 
@@ -974,7 +1055,9 @@ q40_sum %>%
 ```
 
 
-### 41.What is your level of education? (Please choose one)
+### 41. Education  
+
+What is your level of education? (Please choose one)
 
 ```{r, echo=FALSE}
 q41 <- survey %>% 
@@ -1007,7 +1090,9 @@ q41_sum %>%
 
 Other  
 
-### 42. What is your average monthly income?
+### 42. Income  
+
+What is your average monthly income?
 
 ```{r, echo=FALSE}
 q42<-survey %>% 
@@ -1036,7 +1121,9 @@ q42_sum %>%
 income_breaks <- seq(0, 100, 10)
 ```
 
-### 43. What percent (out of 100%) of your annual income comes from fishing?
+### 43. Percent Income - Fishing
+
+What percent (out of 100%) of your annual income comes from fishing?
 
 ```{r, echo=FALSE}
 q43<-survey %>% 
@@ -1070,7 +1157,9 @@ q43_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-### 44. What percent (out of 100%) of your income is spent on expenses related to fishing?
+### 44. Percent Income - Expenses  
+
+What percent (out of 100%) of your income is spent on expenses related to fishing?
 
 ```{r, echo=FALSE}
 q44<-survey %>% 
