@@ -1,0 +1,174 @@
+---
+title: "Mixed Effect Logistic Regression"
+author: "*Compiled on `r date()` by `r Sys.info()['user']`*"
+output: 
+  html_document:
+    toc: true
+    toc_float: yes
+    number_sections: true
+    theme: cerulean
+    highlight: haddock
+    includes: 
+  pdf_document:
+    toc: true
+---
+https://stats.idre.ucla.edu/r/dae/mixed-effects-logistic-regression/
+
+Mixed effects logistic regression is used to model binary outcome variables, in which the log odds of the outcomes are modeled as a linear combination of the predictor variables when data are clustered or there are both fixed and random effects.
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(ggplot2)
+require(GGally)
+require(reshape2)
+require(lme4)
+require(compiler)
+require(parallel)
+require(boot)
+require(lattice)
+```
+
+```{r}
+hdp <- read.csv("https://stats.idre.ucla.edu/stat/data/hdp.csv")
+hdp <- within(hdp, {
+  Married <- factor(Married, levels = 0:1, labels = c("no", "yes"))
+  DID <- factor(DID)
+  HID <- factor(HID)
+})
+
+variables <- read.csv("int/variables.csv", stringsAsFactors = TRUE)
+
+pooled <- read_csv("int/pooled_data_fix.csv") %>%
+  select(-STR) %>%
+  left_join(variables, by = "survey_id") %>%
+  select(-noalt) %>%
+   mutate(
+         choiceid = survey_id) %>%
+  rename("id" = "survey_id") %>%
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice), survey_version = as.factor(survey_version)) %>%
+  within(own <- relevel(own, ref = 4))
+
+# survey respondents are nested within survey version.. our survey_version level variables are info, sos, and own. 
+
+```
+
+Now we are going to graph our continuous predictor variables. Visualizing data can help us understand the distributions, catch coding errors (e.g., we know a variable only takes values from 0 to 7, but we see a 999 in the graph), and give us a sense of the relationship among our variables. For example, we might see that two predictors are highly correlated and decide we only want to include one in the model, or we might note a curvilinear relation between two variables. Data visualization is a fast, intuitive way to check all of this at once. If most your predictors appear independent of each other, that is fine. It shapes your expectations of the model. For example, if they are independent, the estimate for one predictor should not change much when you enter another predictor (although the standard error and significance tests may). We can get all of this information and intuition about what and how to model are data by simply viewing it.
+
+```{r}
+ggpairs(pooled[, c("boat_length_m", "fishing_org_members", "age", "years_fishing", "income", "income_fishing", "income_expenses")])
+```
+
+**Mixed effects logistic regression**
+
+Below we use the glmer command to estimate a mixed effects logistic regression model with years_fishing, as respondent level continuous predictors, community as a respondent level categorical predictor (), info, sos, own, as survey_version level categorical predictors, and a random intercept by survey_version.
+
+```{r}
+m <- glmer(RES ~ years_fishing + community + info + sos + own +
+    (1 | survey_version), data = pooled, family = binomial, control = glmerControl(optimizer = "bobyqa"),
+    nAGQ = 10)
+
+summary(m)
+
+print(m, corr = FALSE)
+```
+
+Confidence Intervals:
+```{r}
+se <- sqrt(diag(vcov(m)))
+# table of estimates with 95% CI
+(tab <- cbind(Est = fixef(m), LL = fixef(m) - 1.96 * se, UL = fixef(m) + 1.96 *
+    se))
+```
+
+Odds Ratios:
+```{r}
+exp(tab)
+```
+
+Predictions:
+```{r}
+# temporary data
+tmpdat <- pooled[, c("years_fishing", "community", "info", "sos", "own", "survey_version")]
+
+summary(pooled$years_fishing)
+```
+
+```{r}
+jvalues <- with(pooled, seq(from = min(years_fishing), to = max(years_fishing), length.out = 100))
+
+# calculate predicted probabilities and store in a list
+pp <- lapply(jvalues, function(j) {
+    tmpdat$years_fishing <- j
+    predict(m, newdata = tmpdat, type = "response")
+})
+```
+
+Now that we have all the predicted probabilities, we can work on displaying them. For example, we could look at the average marginal predicted probability at a handful of different years_fishing. We can also plot all of them.
+
+```{r}
+sapply(pp[c(1, 20, 40, 60, 80, 100)], mean)
+```
+
+```{r}
+# get the means with lower and upper quartiles
+plotdat <- t(sapply(pp, function(x) {
+    c(M = mean(x), quantile(x, c(0.25, 0.75)))
+}))
+
+# add in LengthofStay values and convert to data frame
+plotdat <- as.data.frame(cbind(plotdat, jvalues))
+
+# better names and show the first few rows
+colnames(plotdat) <- c("PredictedProbability", "Lower", "Upper", "years_fishing")
+head(plotdat)
+```
+
+```{r}
+ggplot(plotdat, aes(x = years_fishing, y = PredictedProbability)) + geom_line() +
+    ylim(c(0, 1))
+```
+
+```{r}
+# calculate predicted probabilities and store in a list
+biprobs <- lapply(levels(pooled$sos), function(sos_attribute, own_attribute) {
+  tmpdat$sos[] <- sos_attribute
+  tmpdat$own[] <- own_attribute
+  lapply(jvalues, function(j) {
+    tmpdat$years_fishing <- j
+    predict(m, newdata = tmpdat, type = "response")
+  })
+})
+
+# get means and quartiles for all jvalues for each level of sos
+plotdat2 <- lapply(biprobs, function(X) {
+  temp <- t(sapply(X, function(x) {
+    c(M=mean(x), quantile(x, c(.25, .75)))
+  }))
+  temp <- as.data.frame(cbind(temp, jvalues))
+  colnames(temp) <- c("PredictedProbability", "Lower", "Upper", "years_fishing")
+  return(temp)
+})
+
+# collapse to one data frame
+plotdat2 <- do.call(rbind, plotdat2)
+
+# add cancer stage
+plotdat2$sos <- factor(rep(levels(pooled$sos), each = length(jvalues)))
+
+# show first few rows
+head(plotdat2)
+```
+
+Predict off of our data using our model:
+```{r}
+new_preds <- as.data.frame(predict(m, newdata = tmpdat, type = "response"))
+
+new_df <- cbind(tmpdat, new_preds)
+```
+
+
+
+
+
