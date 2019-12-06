@@ -236,3 +236,16 @@ summary(wtp_lm)
 
 ```
 
+Trying other variables
+```{r}
+fishing_income<-read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
+  select(survey_id, income_fishing) %>% 
+  right_join(bind_log) %>% 
+  na.omit() %>% 
+  filter(income_fishing!=0)
+
+wtp_lm_x <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + log(income_fishing)  + factor(country), data = fishing_income)
+
+summary(wtp_lm_x)
+```
+
