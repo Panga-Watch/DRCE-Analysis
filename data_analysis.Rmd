@@ -43,23 +43,69 @@ library(here)
 library(kableExtra)
 
 master_survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>%
-  select(-start, -end, -survey_type, -survey_version, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -photo)
+  select(-start, -end, -survey_type, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -photo)
 ```
 
-Standard opt-out model (Model I)
+## Standard opt-out model (Model I)
 ```{r}
 standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
   left_join(master_survey, by = "survey_id") %>%
   select(-noalt)
-## Now we have ALL of the characteristics matched with each survey respondent and the correct data structure to plug into clogit. All you have to do is add whatever characteristic you want to the clogit function... i.e. age, years fishing, sex, village, etc... although I think you would have to add something like sos:country to determine the effect that country has on the sos attribute... meaning we would have to do this for every attribute for every characteristic if we use clogit... see below.
+## Now we have ALL of the characteristics matched with each survey respondent and the correct data structure to plug into clogit. All you have to do is add whatever characteristic you want to the clogit function... i.e. age, years fishing, sex, village, etc... although I think you would have to add something like sos:country to determine the effect that country has on the sos attribute...
 
-standard_clogit <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + strata(STR), data=standard_opt_out) # run the clogit. ASC represents the alternative specific constant, or the opt out option.
+standard_clogit <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + strata(survey_version), data=standard_opt_out) # run the clogit. ASC represents the alternative specific constant, or the opt out option.
 summary(standard_clogit)
 
 standard_clogit_char_test <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + country + age + community + strata(STR), data=standard_opt_out)
 standard_clogit_char_test
 
 ```
+
+## Extrapolate predictions using standard clogit model
+```{r}
+standard_predictions <- predict(standard_clogit, newdata = standard_opt_out, type = "risk", se.fit = TRUE)
+
+standard_predictions_data <- data.frame(standard_opt_out, standard_predictions) %>%
+  select(STR, package, info, sos, own, RES, fit, se.fit)
+
+#reasoning for predicting out a clogit model:
+#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+
+# sos	0 = no, 1 = yes
+# info 	1= non, 0 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+standard_predictions_data <- standard_predictions_data %>%
+  mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-`probability (%)`) %>%
+  select(package, info, own, sos, `probability (%)`, level_se) %>%
+  group_by(package, info, own, sos) %>%
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) %>%
+  mutate(info = case_when(
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
+  ), 
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry", 
+   own == 3 ~ "Government", 
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
+  ))
+
+write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FALSE)
+
+DT::datatable(standard_predictions_data)
+```
+
+
 
 ## Pooled (Model II)
 ```{r}
@@ -571,10 +617,10 @@ all_packages_standard <- all_packages %>%
   mutate(ASC = 1) 
 
 
-standard_predictions <- predict(standard_clogit, newdata = standard_opt_out, type = "expected", se.fit = TRUE)
+standard_predictions <- predict(standard_clogit, newdata = standard_opt_out, type = "risk", se.fit = TRUE)
 
 standard_predictions_data <- data.frame(standard_opt_out, standard_predictions) %>%
-  select(STR, package, info, sos, own, RES, fit)
+  select(STR, package, info, sos, own, RES, fit, se.fit)
 
 #reasoning for predicting out a clogit model:
 #https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
@@ -588,9 +634,11 @@ standard_predictions_data <- data.frame(standard_opt_out, standard_predictions) 
 standard_predictions_data <- standard_predictions_data %>%
   mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
          level_se = se.fit/(se.fit + 1)) %>%
-  select(-fit, -se.fit, -STR, -level_se) %>%
+  select(-fit, -se.fit, -STR) %>%
   arrange(-`probability (%)`) %>%
-  select(info, own, sos, `probability (%)`) %>%
+  select(package, info, own, sos, `probability (%)`, level_se) %>%
+  group_by(package, info, own, sos) %>%
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) %>%
   mutate(info = case_when(
     info == 0 ~ "Anon",
     info == 1 ~ "Non-Anon"

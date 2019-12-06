@@ -28,6 +28,7 @@ require(compiler)
 require(parallel)
 require(boot)
 require(lattice)
+library(tidyverse)
 ```
 
 ```{r}
@@ -65,9 +66,9 @@ ggpairs(pooled[, c("boat_length_m", "fishing_org_members", "age", "years_fishing
 Below we use the glmer command to estimate a mixed effects logistic regression model with years_fishing, as respondent level continuous predictors, community as a respondent level categorical predictor (), info, sos, own, as survey_version level categorical predictors, and a random intercept by survey_version.
 
 ```{r}
-m <- glmer(RES ~ years_fishing + community + info + sos + own +
-    (1 | survey_version), data = pooled, family = binomial, control = glmerControl(optimizer = "bobyqa"),
-    nAGQ = 10)
+m <- glmer(RES ~ years_fishing +
+    (1 | sos) + (1 | info) + (1 | own), data = pooled, family = binomial, control = glmerControl(optimizer = "bobyqa"),
+    nAGQ = 1)
 
 summary(m)
 
@@ -166,6 +167,36 @@ Predict off of our data using our model:
 new_preds <- as.data.frame(predict(m, newdata = tmpdat, type = "response"))
 
 new_df <- cbind(tmpdat, new_preds)
+```
+
+Compare to mlogit:
+```{r}
+library(mlogit)
+
+pooled <- read_csv("int/pooled_data_fix.csv") %>%
+  select(-STR) %>%
+  left_join(variables, by = "survey_id") %>%
+  select(-noalt, -ASC, -own.fisher, -own.industry, -own.gov, -own.public, -survey_version)  %>%
+  mutate(choice = ifelse(RES == 1, TRUE, FALSE), sos = as.factor(sos), info = as.factor(info), own = as.factor(own)) %>%
+  rename("id" = "survey_id", "chid" = "STR") %>%
+  select(-RES) 
+#sos = as.factor(sos), info = as.factor(info), own = as.factor(own)
+map_column <- rep(c(1,2),length(unique(pooled$id)))
+
+pooled <- pooled %>%
+  mutate(alt = map_column)
+
+pmlogit_data <- mlogit.data(pooled, id = "id", choice = "choice", shape = "long", alt.var = "alt", varying = 3:5 )
+
+pmlogit <- mlogit(choice ~ info + sos + own | -1, pmlogit_data, halton = NA, panel = FALSE, R = 100)
+
+summary(pmlogit)
+
+fitted(pmlogit)
+
+data("Electricity", package = "mlogit")
+Electr <- mlogit.data(Electricity, id = "id", choice = "choice", 
+                      varying = 3:26, shape = "wide", sep = "")
 ```
 
 
