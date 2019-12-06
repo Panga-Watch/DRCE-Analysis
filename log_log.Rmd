@@ -8,7 +8,7 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
 ```{r}
-plot(cars)
+library(tidyverse)
 ```
 
 
@@ -28,7 +28,8 @@ choice_package<-choice %>%
   mutate(choice = ifelse(package <=16,1,2))
 
 
-survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE)
+survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
+  select(survey_id, survey_version, country, choice, package_nopackage, starts_with("wtp"), starts_with("wtr"))
 
 pack_yes<- survey %>% 
   filter(package_nopackage == 1) %>% 
@@ -71,14 +72,6 @@ other_pack<-bind_pre %>%
 
 bind<-rbind(bind_pre, other_pack) 
 
-yrs_fish<-
-
-bind_log<-bind_wtp %>% 
-  filter(choice == 1) %>% 
-  mutate(sos = ifelse(sos==1,0,1)) %>% 
-  mutate(info = ifelse(info == 2,0,1)) %>% 
-  mutate(own=as.factor(own)) %>% 
-  
 ```
 
 For IND
@@ -122,7 +115,21 @@ bind_mex<-bind %>%
 bind_wtp<-rbind(bind_mex,bind_ind) %>% 
   mutate(own=as.factor(own))
 
-glm.fit <- glm(choice ~ sos + info + wtp + own, data = bind_wtp, family = binomial)
 
+#making the df to be used for log-log
+bind_log<-bind_wtp %>% 
+  filter(choice == 1) %>% 
+  mutate(sos = ifelse(sos==1,0,1)) %>% 
+  mutate(info = ifelse(info == 2,0,1)) %>% 
+  mutate(own=as.factor(own)) 
+
+```
+
+
+
+
+```{r}
+glm.fit <- glm(choice ~ sos + info + wtp + own, data = bind_wtp, family = binomial)
 summary(glm.fit)
+```
 
