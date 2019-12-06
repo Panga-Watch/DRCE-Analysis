@@ -58,21 +58,26 @@ Try to add in the opt out to use with mlogit
 ```{r}
 ## try standard with mlogit... not working. See this stack overflow for how to supposedely incorporate an opt out with mlogit() : https://stackoverflow.com/questions/31355145/including-opt-out-as-alternative-specific-constant-in-r-mlogit
 
+## did not work trying to exclude 3rd option. I.e. present the data with two options, but both could have choice == FALSE. 
+
+## Try making the optout the status quo and present that as a 3rd choice, "C"?
+
 standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
   select(-STR, -noalt) %>%
-  left_join(variables, by = "survey_id") 
+  left_join(variables, by = "survey_id") #%>%
+  #filter(ASC != 0) 
   
 
 map_column <- rep(c("A","B", "C"),length(unique(standard_opt_out$survey_id))) # make a column of A,B,C to denote the three choices offered... i.e. package A, package B, opt out.
+#map_column <- rep(c("A","B"),length(unique(standard_opt_out$survey_id)))
 
 standard_mlogit_data <- standard_opt_out %>%
   select(-interviewer, -interviewer_Org) %>%
   mutate(alt = map_column,
          choiceid = survey_id,
          choice = ifelse(RES == 1, "TRUE", "FALSE")) %>%
-  select(-RES) %>%
   rename("id" = "survey_id") %>%
-  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice))
+  mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), choice = as.logical(choice)) 
 
 standard_mlogit_data$optout <- factor(ifelse(standard_mlogit_data$alt == "C", "1", "0")) # add the alternative specific constant which denotes the opt out choice
 
@@ -80,7 +85,9 @@ standard_mlogit_data_final <- mlogit.data(standard_mlogit_data, shape = c("long"
 
 standard_mlogit_data_final <- within(standard_mlogit_data_final, own <- relevel(own, ref = 4)) #change reference level for ownership variable. 
 
-standard_mlogit <- mlogit(choice ~sos + info + own + optout, standard_mlogit_data_final, reflevel = "C")
+standard_mlogit <- mlogit(choice ~ sos + info + own | -1, standard_mlogit_data_final)
+
+summary(standard_mlogit)
 
 packages <- read_csv("raw/packages.csv") %>%
    mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1))
