@@ -1,0 +1,128 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+
+
+
+# BLR including WTP
+```{r}
+#data formatting 
+choice<- read.csv("raw/version_to_package.csv", stringsAsFactors = TRUE) %>% 
+  rename(survey_version = 1)
+
+packages<- read.csv("raw/packages.csv", stringsAsFactors = TRUE)  %>% 
+  rename(package = 1)
+
+choice_package<-choice %>% 
+  left_join(packages) %>% 
+  mutate(choice = ifelse(package <=16,1,2))
+
+
+survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE)
+
+pack_yes<- survey %>% 
+  filter(package_nopackage == 1) %>% 
+  mutate(wtp = ifelse(wtp_4== "y", 4,
+                      ifelse(wtp_4== "n", 3,
+                             ifelse(wtp_3=="n", 2,
+                                    ifelse(wtp_2=="n", 1, 0))))) %>% 
+  select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=1)
+
+pack_no <- survey %>% 
+  filter(package_nopackage == 0) %>% 
+  mutate(wtp = ifelse(wtr_4== "y", -4,
+                      ifelse(wtr_4== "n", -5,
+                             ifelse(wtr_3=="y", -3,
+                                    ifelse(wtr_2=="y", -2, -1))))) %>% 
+  select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=1)
+
+pack_no_no<-pack_no %>% 
+  mutate(wtp=(wtp+1)) %>% 
+  mutate(choice = 0)
+
+pack_yes_no<-pack_yes %>% 
+  filter(wtp!=4) %>% 
+  mutate(wtp=(wtp+1)) %>% 
+  mutate(choice = 0)
+
+bind_pre<-rbind(pack_no,pack_yes, pack_no_no, pack_yes_no) %>% 
+  filter(wtp!=-5)
+
+other_pack<-bind_pre %>% 
+  select(survey_id, survey_version, country,  choice) %>%
+  mutate(choice = ifelse(choice == 1,2,1)) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=0) %>% 
+  mutate(wtp=0)
+
+bind<-rbind(bind_pre, other_pack) 
+
+yrs_fish<-
+
+bind_log<-bind_wtp %>% 
+  filter(choice == 1) %>% 
+  mutate(sos = ifelse(sos==1,0,1)) %>% 
+  mutate(info = ifelse(info == 2,0,1)) %>% 
+  mutate(own=as.factor(own)) %>% 
+  
+```
+
+For IND
+
+wtp_1 = $2.14
+wtp_2 = $3.56
+wtp_3 = $5.35
+wtp_4 = $7.12
+
+For MEX 
+
+wtp_1 = $2.07
+wtp_2 = $3.62
+wtp_3 = $5.17
+wtp_4 = $7.75
+
+```{r}
+
+bind_ind<-bind %>% 
+  filter(country=="IND") %>% 
+  mutate(wtp = ifelse(wtp == -4, -7.12,
+                       ifelse(wtp == -3, -5.35, 
+                              ifelse(wtp == -2, -3.56,
+                                      ifelse(wtp == -1, -2.14, 
+                                             ifelse(wtp == 0, 0, 
+                                                    ifelse(wtp == 1, 2.14, 
+                                                           ifelse(wtp == 2, 3.56, 
+                                                                  ifelse(wtp == 3, 5.35, 7.12)))))))))
+
+bind_mex<-bind %>% 
+  filter(country=="MEX") %>% 
+  mutate(wtp = ifelse(wtp == -4, -7.75,
+                       ifelse(wtp == -3, -5.17, 
+                              ifelse(wtp == -2, -3.62,
+                                      ifelse(wtp == -1, -2.07, 
+                                             ifelse(wtp == 0, 0, 
+                                                    ifelse(wtp == 1, 2.07, 
+                                                           ifelse(wtp == 2, 3.62, 
+                                                                  ifelse(wtp == 3, 5.17, 7.75)))))))))
+
+bind_wtp<-rbind(bind_mex,bind_ind) %>% 
+  mutate(own=as.factor(own))
+
+glm.fit <- glm(choice ~ sos + info + wtp + own, data = bind_wtp, family = binomial)
+
+summary(glm.fit)
+
