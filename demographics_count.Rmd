@@ -49,7 +49,7 @@ quant <- header_key %>%
 
 # Results  
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning = FALSE, message = FALSE}
 #creating summary df with total response count for each column
 totals <- survey %>% 
   gather(column_header,resp) %>% 
@@ -1201,3 +1201,73 @@ q44_sum %>%
 
 Photo of the Fishing Vessel if available (or other relevant material)
 Any additional questions, comments, notes, etc....
+
+# Basic CE Related Numbers  
+
+```{r}
+library(mlogit)
+data("Electricity", package = "mlogit")
+
+Electr <- mlogit.data(Electricity, id="id", choice="choice", varying=3:26, shape="wide", sep="")
+
+```
+
+```{r}
+package_abc<-package_abc_df %>% 
+  mutate(fish = ifelse(own == 1,1,0)) %>% 
+  mutate(gov = ifelse(own == 3,1,0)) %>% 
+  mutate(ind = ifelse(own == 2,1,0)) %>% 
+  mutate(pub = ifelse(own == 4,1,0)) %>% 
+  select(-package_abc, -package, -own)
+
+choice_one<-package_abc %>% 
+  filter(choice == 1) %>% 
+  rename(sos1=1, info1 =2, fish1=5, gov1=6, ind1=7, pub1=8) %>% 
+  select(-choice)
+
+choice_two<-package_abc %>% 
+  filter(choice == 2) %>% 
+  rename(sos2=1, info2 =2, fish2=5, gov2=6, ind2=7, pub2=8)%>% 
+  select(-choice)
+
+choice_comb<-choice_one %>% 
+  left_join(choice_two) %>% 
+  mutate(fish3 = 0) %>% 
+  mutate(gov3 = 0) %>% 
+  mutate(ind3 = 0) %>% 
+  mutate(pub3 = 0) %>%
+  mutate(sos3 = 0) %>% 
+  mutate(info3 = 0)
+
+package_abc_no<-package_abc_df %>% 
+  rename(sos2 = 1, info2 = 2, own2 = 3, no_choice = 7) %>% 
+  select(-package_abc, -package) %>% 
+
+package_abc_yes<- package_abc_df %>% 
+  rename(sos1 = 1, info1 = 2, own1 = 3) %>% 
+  select(-package_abc, -package)  
+  
+  
+mlog_try<- survey %>% 
+  select(survey_id, survey_version, choice, package_nopackage) %>% 
+  mutate(choice = ifelse(package_nopackage == 0,3,choice)) %>% 
+  select(-package_nopackage) %>% 
+  left_join(choice_comb) %>% 
+  rename(id=1) %>% 
+  select(-survey_version)
+
+mlog <- mlogit.data(mlog_try, id="id", choice="choice", varying=3:20, shape="wide", sep="")
+
+mlog.mxl <- mlogit(choice ~ sos + info + fish + pub + gov + ind, mlog_alt, rpar=c(sos='n', info='n', fish='n', pub='n', gov='n', ind='n', no_choice = 'n'), R=100, halton=TRUE, print.level=0)
+
+mlog_alt<-mlog %>% 
+  mutate(no_choice = ifelse (alt == 3,1,0))
+
+summary(mlog.mxl)
+
+p1 <- mlogit(choice~sos+info+fish+pub+gov+ind|0, mlog, seed = 20, R = 100, probit = TRUE)
+
+summary(p1)
+
+```
+
