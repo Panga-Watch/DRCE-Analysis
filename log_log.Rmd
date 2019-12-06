@@ -127,7 +127,7 @@ bind_log<-bind_wtp %>%
 
 Adding variables for 
 ```{r}
-variables_log<-survey %>% 
+variables_log<-variables %>% 
   select(survey_id, country, community, income, years_fishing, age, education)
   
 #income conversion
@@ -163,13 +163,24 @@ variables_income<-variables_income %>%
 ggplot(variables_income, aes(x=income_usd))+
   geom_histogram()+
   facet_wrap(~country)
+
+ggplot(variables_income, aes(x=gdp_prop))+
+  geom_histogram()+
+  facet_wrap(~country)
 ```
 
 
-
-
 ```{r}
-glm.fit <- glm(choice ~ sos + info + wtp + own, data = bind_wtp, family = binomial)
-summary(glm.fit)
+
+pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own, ref = 4))
+
+bind_log <- bind_log %>%
+  left_join(variables_income) %>%
+  within(own <- relevel(own, ref = 4))
+
+wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + education + factor(country), data = bind_log)
+
+summary(wtp_lm)
+
 ```
 
