@@ -98,3 +98,33 @@ package_choice %>%
   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 ```
 
+
+# clogit with choice set partitioning 
+
+```{r}
+# abc with sos, info, and own
+survey_full <- version %>% 
+  left_join(packages)
+
+c_one<- survey_full %>% 
+  filter(choice ==1)
+
+c_two<- survey_full %>% 
+  filter(choice ==2)
+
+c_full<-left_join(c_one, c_two, by = "survey_version")
+
+sos<-c_full %>% 
+  filter(sos.x==sos.y) %>% 
+  select(survey_version)%>% 
+  left_join(survey) %>% 
+  select(survey_id) %>% 
+  left_join(standard_opt_out)
+
+info<-c_full %>% 
+  filter(info.x==info.y)
+
+
+
+```
+
