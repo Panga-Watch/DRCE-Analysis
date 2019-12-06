@@ -127,6 +127,8 @@ bind_log<-bind_wtp %>%
 
 Adding variables for 
 ```{r}
+variables <- read_csv("int/variables.csv")
+
 variables_log<-variables %>% 
   select(survey_id, country, community, income, years_fishing, age, education)
   
@@ -143,11 +145,11 @@ gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018,
 
 #community mean income to fill NA values for income
 
-com_mean<-survey %>% 
+com_mean<-variables %>% 
   group_by(community) %>% 
   summarise(mean_income = mean(income, na.rm = TRUE))
 
-variables_income<-survey %>% 
+variables_income<-variables %>% 
   select(survey_id, country, community, income) %>%
   left_join(com_mean) %>%
   mutate(gf_income = ifelse(is.na(income), 1, 0)) %>% 
@@ -172,12 +174,9 @@ ggplot(variables_income, aes(x=gdp_prop))+
 
 
 ```{r}
-<<<<<<< HEAD
 
-pooled_mlogit_data_final <- within(pooled_mlogit_data_final, own <- relevel(own, ref = 4))
-=======
 #education
-variables_edu<-survey %>% 
+variables_edu<-variables %>% 
   select(survey_id, country, community, education) %>%  
   mutate(education=as.character(education)) %>% 
   mutate(education = ifelse(education == "other", "secondary", education)) 
@@ -186,16 +185,16 @@ variables_edu<-survey %>%
 Combining corrected variables (income and education) with years_fishing, age, community
 
 ```{r}
-variables_log<-survey %>% 
+variables_log<-variables %>% 
   select(survey_id, country, community, years_fishing, age) %>% 
   left_join(variables_edu) %>% 
   left_join(gdp_prop)
 ```
 
->>>>>>> bd477088e6d03aa38ec48be336c85feb7623feb0
 
+```{r}
 bind_log <- bind_log %>%
-  left_join(variables_income) %>%
+  left_join(variables_log) %>%
   within(own <- relevel(own, ref = 4))
 
 wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + education + factor(country), data = bind_log)
