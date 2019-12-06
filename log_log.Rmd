@@ -134,9 +134,31 @@ variables_log<-survey %>%
 #0.000071 USD / 1 Indonesian Rupiah 
 #0.052 USD / 1 Medican Peso
 
+library(WDI)
+
+gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018, end = 2018) %>% 
+  mutate(country=ifelse(country=="Mexico", "MEX", "IND")) %>% 
+  rename(c = 1) %>% 
+  select(-c, -year)
+
+
 variables_income<-variables_log %>% 
   mutate(currency = ifelse(country=="MEX", 0.052, 0.000071)) %>% 
-  mutate(income_usd = currency*income)
+  mutate(income_usd = currency*income*12) %>% 
+  left_join(gdp_raw)
+
+com_mean<-variables_income %>% 
+  group_by(community) %>% 
+  summarise(mean_income = mean(income_usd, na.rm = TRUE))
+
+variables_income<-variables_income %>% 
+  left_join(com_mean) %>% 
+  mutate(gf_income = ifelse(is.na(income_usd), 1, 0)) %>% 
+  mutate(income_usd = ifelse(is.na(income_usd), mean_income, income_usd)) %>% 
+  mutate(gdp_prop = income_usd/NY.GDP.PCAP.KD)
+
+
+  
 
 ggplot(variables_income, aes(x=income_usd))+
   geom_histogram()+
