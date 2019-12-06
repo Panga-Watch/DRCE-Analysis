@@ -125,6 +125,24 @@ bind_log<-bind_wtp %>%
 
 ```
 
+Adding variables for 
+```{r}
+variables_log<-survey %>% 
+  select(survey_id, country, community, income, years_fishing, age, education)
+  
+#income conversion
+#0.000071 USD / 1 Indonesian Rupiah 
+#0.052 USD / 1 Medican Peso
+
+variables_income<-variables_log %>% 
+  mutate(currency = ifelse(country=="MEX", 0.052, 0.000071)) %>% 
+  mutate(income_usd = currency*income)
+
+ggplot(variables_income, aes(x=income_usd))+
+  geom_histogram()+
+  facet_wrap(~country)
+```
+
 
 
 
