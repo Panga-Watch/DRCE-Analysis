@@ -160,7 +160,9 @@ wtp_distribution %>%
 # Adding variables Income, Education, Years Fishing, Age, Country
 
 ```{r}
-variables_log<-survey %>% 
+variables <- read_csv("int/variables.csv")
+
+variables_log<-variables %>% 
   select(survey_id, country, community, income, years_fishing, age, education)
   
 #income conversion
@@ -176,11 +178,11 @@ gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018,
 
 #community mean income to fill NA values for income
 
-com_mean<-survey %>% 
+com_mean<-variables %>% 
   group_by(community) %>% 
   summarise(mean_income = mean(income, na.rm = TRUE))
 
-variables_income<-survey %>% 
+variables_income<-variables %>% 
   select(survey_id, country, community, income) %>%
   left_join(com_mean) %>%
   mutate(gf_income = ifelse(is.na(income), 1, 0)) %>% 
@@ -197,12 +199,17 @@ gdp_prop<-variables_income %>%
 ggplot(variables_income, aes(x=income_usd))+
   geom_histogram()+
   facet_wrap(~country)
+
+ggplot(variables_income, aes(x=gdp_prop))+
+  geom_histogram()+
+  facet_wrap(~country)
 ```
 
 
 ```{r}
+
 #education
-variables_edu<-survey %>% 
+variables_edu<-variables %>% 
   select(survey_id, country, community, education) %>%  
   mutate(education=as.character(education)) %>% 
   mutate(education = ifelse(education == "other", "secondary", education)) 
@@ -211,16 +218,21 @@ variables_edu<-survey %>%
 Combining corrected variables (income and education) with years_fishing, age, community
 
 ```{r}
-variables_log<-survey %>% 
+variables_log<-variables %>% 
   select(survey_id, country, community, years_fishing, age) %>% 
   left_join(variables_edu) %>% 
   left_join(gdp_prop)
 ```
 
 
-
 ```{r}
-glm.fit <- glm(choice ~ sos + info + wtp + own, data = bind_wtp, family = binomial)
-summary(glm.fit)
+bind_log <- bind_log %>%
+  left_join(variables_log) %>%
+  within(own <- relevel(own, ref = 4))
+
+wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + education + factor(country), data = bind_log)
+
+summary(wtp_lm)
+
 ```
 
