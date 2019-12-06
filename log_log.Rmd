@@ -9,6 +9,12 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 ```{r}
 library(tidyverse)
+library(ggfortify)
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(viridis)
+library(ggthemes)
 ```
 
 
@@ -125,7 +131,34 @@ bind_log<-bind_wtp %>%
 
 ```
 
-Adding variables for 
+
+```{r}
+wtp_distribution <-bind %>% 
+  filter(choice == 1) %>% 
+  select(wtp) %>%
+  mutate(wtp_p4 = wtp + 4) %>% 
+  mutate(log_wtp= log(wtp_p4)) %>% 
+  gather(variable, value) 
+  
+
+wtp_distribution %>% 
+ ggplot(aes(x = value, fill = variable)) +
+    geom_bkde() +
+    geom_rug() +
+    scale_fill_viridis(guide = FALSE, discrete = TRUE) +
+    facet_wrap(~variable, scales = "free") +
+    theme_base()
+
+```
+
+
+
+
+
+
+
+# Adding variables Income, Education, Years Fishing, Age, Country
+
 ```{r}
 variables_log<-survey %>% 
   select(survey_id, country, community, income, years_fishing, age, education)

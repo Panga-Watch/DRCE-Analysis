@@ -23,11 +23,9 @@ theme_set(theme_pubr())
 
 ```{r, include=FALSE}
 # Read in all of the raw data
-survey <- read_csv("raw/master_survey_resp.csv") %>% 
-  mutate(wtp_cat = ifelse(wtr_4 == "n", "pro",
-                          ifelse( wtp_1 == "n", "zero",
-                                  ifelse(package_nopackage == 1, "pay", "rec")))) %>% 
-  mutate(wtp_cat = as.factor(wtp_cat))
+survey <- read_csv("raw/master_survey_resp.csv", string) %>% 
+  left_join(bind_df) %>% 
+  mutate(wtp=as.factor(wtp))
 
 header_key <- read_csv("raw/survey_header_key.csv")
 
@@ -45,6 +43,14 @@ qual <- choice_key %>%
 quant <- header_key %>% 
   left_join(choice_key) %>% 
   filter(type!="text")
+```
+
+```{r}
+bind_df<-bind %>% 
+  filter(choice==1) %>% 
+  select(survey_id, wtp) 
+  
+
 ```
 
 # Results  
@@ -97,10 +103,10 @@ In the last 12 months, what fishing gear have you used?
 ```{r, echo=FALSE}
 q4<-survey %>% 
   mutate(gear_buceo = ifelse(grepl("Buceo", other_gear), 1, 0)) %>% 
-  select(starts_with("gear")) %>% 
+  select(starts_with("gear"), survey_id, wtp) %>% 
   na.omit() 
-
-
+  
+  
 oldnames4<-colnames(q4)
 newnames4 <- c("Hand Line", "Spear", "Traps", "Stationary Net",  "Mobile Net", "Stationary Line", "Other", "*Buceo")
 
@@ -125,10 +131,20 @@ q4_sum %>%
   kable() %>% 
   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 
-ggplot(q4_sum, aes(x = reorder(Gear, -Count), y = Count)) +
+ggplot(q4_sum, aes(x = reorder(Gear, -Count), y = Count, fill = wtp)) +
   geom_bar(stat = "identity") +
   xlab("Gear")+
   theme_classic()
+
+
+q4_plot<-q4 %>% 
+  gather(gear,count, 1:8) %>% 
+  filter(count == 1) %>% 
+  mutate(gear=as.factor(gear)) %>% 
+  mutate(wtp=as.factor(wtp))
+
+ggplot(q4_plot, aes(x=gear)) +
+  geom_bar(aes(fill=wtp), width = 0.5)
 ```
 
 Other  
@@ -1092,7 +1108,14 @@ q41_sum %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-Other  
+Other 
+
+```{r}
+edu_other<-survey %>% 
+  select(survey_id,country, contains("edu")) %>% 
+  filter(education=="other")
+```
+
 
 ### 42. Income  
 
