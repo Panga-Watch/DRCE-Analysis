@@ -15,6 +15,7 @@ library(readr)
 library(dplyr)
 library(viridis)
 library(ggthemes)
+library(DT)
 ```
 
 
@@ -283,7 +284,6 @@ coef_lm <- as.data.frame(wtp_lm$coefficients) %>%
   tibble::rownames_to_column("Beta") %>%
   mutate(on = exp(wtp_lm$coefficients) - 1 , off = exp(-wtp_lm$coefficients) - 1)
 
-## TODO ## Figure out the interpretation of the continuous variables 
 ```
 
 
@@ -293,11 +293,10 @@ The coefficient on a dummy variable with a log-transformed Y variable is interpr
 ## Results: 
 By controlling for country in the original equation as fixed effects within our model, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico.
 
-The unconditional expected geometric mean of our willingness to pay variable is $1.67596. 
+The unconditional expected geometric mean of our willingness to pay variable is $$e^{1.67596} = 5.34$$ .
 
+**Categorical Predictors (Approximate Interpretation):**
 
-
-**Predictors that are categorical (Approximate Interpretation):**
  - Predicted WTP is approximately 17% higher with an SOS button, than not with one. 
  
  - Predicted WTP is approximately 5% lower with non anonymity, than with anonymity.
@@ -316,24 +315,26 @@ The unconditional expected geometric mean of our willingness to pay variable is 
  
  - Predicted WTP is approximately 35% higher when respondent had vocational education, than no formal education.
  
-**Predictors that are categorical (Exact Interpretation):**
+**Categorical Predictors (Exact Interpretation):**
 I will only show the proof for one of our categorical variables, as it could get redundant otherwise. 
 
 SOS: 
 
-$$ "Turning \ SOS \ on" \ \frac{(PWTP_{SOS = 1} - PWTP_{SOS = 0})}{PWTP_{SOS = 0}} = \frac{PWTP_{SOS = 1}}{PWTP_{SOS = 0}} - 1 = e^{\beta_1} - 1 = e^{0.1718} - 1 =  0.18744 $$
+$$ "Turning \ SOS \ on" \ \frac{(WTP_{SOS = 1} - WTP_{SOS = 0})}{WTP_{SOS = 0}} = \frac{WTP_{SOS = 1}}{WTP_{SOS = 0}} - 1 = e^{\beta_1} - 1 = e^{0.1718} - 1 =  0.18744 $$
  - With an SOS functionality, on average, WTP for this technology is 18.74% percent higher than not having SOS functionality, holding the rest of our variables constant.
  
- $$ "Turning \ SOS \ off" \  \frac{(PWTP_{SOS = 0} - PWTP_{SOS = 1})}{PWTP_{SOS = 1}} = \frac{PWTP_{SOS = 0}}{PWTP_{SOS = 1}} - 1 = e^{\beta_1} - 1 = e^{-0.1718} - 1 =  -0.1578 $$
+ $$ "Turning \ SOS \ off" \  \frac{(WTP_{SOS = 0} - WTP_{SOS = 1})}{WTP_{SOS = 1}} = \frac{WTP_{SOS = 0}}{WTP_{SOS = 1}} - 1 = e^{\beta_1} - 1 = e^{-0.1718} - 1 =  -0.1578 $$
  - Without an SOS functionality, on average, WTP for this technology is 15.78% less than having an SOS functionality, holding the rest of our variables constant. 
  
  The rest of the exact interpretation calculations are done in the same was as above. 
  
-**Information Access:**
+Information Access:
+
  -  Being non-anonymous in the data, on average, WTP for this technology is 4.8% percent less than being anonymous in the data, holding the rest of our variables constant.
   -  Being anonymous in the data, on average, WTP for this technology is 5.1% percent higher than being non-anonymous in the data, holding the rest of our variables constant.
   
-**Ownership of data: **
+Ownership of data: 
+
  -  With fisher ownership of the data, on average, WTP for this technology is 14.04% percent higher than publicly available data, holding the rest of our variables constant.
  -  With public availability of the data, on average, WTP for this technology is 12.31% percent less than fisher ownership of the data, holding the rest of our variables constant.
  
@@ -343,7 +344,8 @@ $$ "Turning \ SOS \ on" \ \frac{(PWTP_{SOS = 1} - PWTP_{SOS = 0})}{PWTP_{SOS = 0
    -  With government ownership of the data, on average, WTP for this technology is 3.6% percent higher than publicly available data, holding the rest of our variables constant.
  -  With public availability of the data, on average, WTP for this technology is 3.4% percent less than government ownership of the data, holding the rest of our variables constant.
  
- **Education:** 
+ Education:
+ 
  -  With primary education, on average, WTP for this technology is 16.7% percent higher than no formal education, holding the rest of our variables constant.
  -  With no formal education, on average, WTP for this technology is 14.3% percent less than having primary education, holding the rest of our variables constant.
  
@@ -356,7 +358,52 @@ $$ "Turning \ SOS \ on" \ \frac{(PWTP_{SOS = 1} - PWTP_{SOS = 0})}{PWTP_{SOS = 0
  -  With vocational education, on average, WTP for this technology is 41.9% percent higher than no formal education, holding the rest of our variables constant.
  -  With no formal education, on average, WTP for this technology is 29.5% percent less than having vocational education, holding the rest of our variables constant.
  
-Predictors that are continuous:
+**Continuous Predictors (Exact Interpretation):**
+
+gdp_prop (proxy for income usd):
+
+ - For a one unit increase in gdp_prop, we expect to see a 1.58% decrease in WTP. 
+ 
+ years_fishing: 
+ 
+  - For a one unit increase in years_fishing, we expect to see a 3.78% increase in WTP.
+  
+fishing_org_members: 
+
+ - For a one unit increase in fishing_org_members, we expect to see a 2.92% decrease in WTP.
+ 
+ **Continuous Predictors Effects**
+
+Lets focus on the effect of our of our continuous predictor variables, years_fishing. Take two values of years_fishing, m1 and m2, and hold the other predictor variables at any fixed value. 
+
+$$ log(WTP(m_{2})) - log(WTP(m_{1})) = \beta_{7}*[log(m_{2} - m_{1})] $$
+$$ log[\frac{WTP(m_{2})}{WTP(m_{1})}] = \beta_{7}*[log(\frac{m_{2}}{m_{1}})] $$
+leading to 
+$$ \frac{WTP(m_{2})}{WTP(m_{1})} = (\frac{m_{2}}{m_{1}})^{\beta_{7}} $$
+
+This tells us that as long as the ratio of the two years_fishing stays the same, $$\frac{m_{2}}{m_{1}}$$ stays the same, the expected ratio of the outcome variable, WTP, stays the same. For example, we can say that for any 10% increase in years_fishing, the expected ratio of the WTP will be $$(1.10)^{β_{7}} = (1.10)^{0.03718} = 1.00355. $$ In other words, we expect about .355% increase in WTP when years_fishing increases by 10%. See the table below for the effect of every %increase of a continuous predictor variable by 1% on WTP. 
+
+
+
+```{r}
+percent <- seq(from = 1, to = 1.99, by = 0.01)
+beta_years_fishing <- data.frame(beta_value = rep(wtp_lm$coefficients[8], 100), beta_name = rep("years_fishing", 100))
+
+effects_years_fishing <- cbind(percent, beta_years_fishing)
+
+beta_gdp_prop <- data.frame(beta_value = rep(wtp_lm$coefficients[7], 100), beta_name = rep("gdp_prop", 100))
+effects_gdp_prop <- cbind(percent, beta_gdp_prop)
+
+beta_fishing_org_members <- data.frame(beta_value = rep(wtp_lm$coefficients[9], 100), beta_name = rep("fishing_org_members", 100))
+effects_fishing_org_members <- cbind(percent, beta_fishing_org_members)
+
+actual_continuous_effects <- rbind(effects_years_fishing, effects_gdp_prop, effects_fishing_org_members) %>% mutate(increase_decrease_WTP = ifelse(
+  beta_value < 0, -1*(1 - (percent)^beta_value), (percent)^beta_value - 1))
+```
+
+```{r}
+datatable(actual_continuous_effects)
+```
 
 
 
