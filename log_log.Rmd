@@ -1,6 +1,8 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
@@ -266,16 +268,14 @@ summary(wtp_lm)
 
 ## income/gdp_prop: hypothesis: a higher income will place a higher value on the technology... model disagrees.. could have an interesting dialogue 
 
-## education: a more educated person will likely want to pay more for this technology.. they will see more benefit in it. 
+## education: a more educated person will likely want to pay more for this technology.. they will see more benefit in it. However, possible that we have some collinearity with education and income... should we debunk this? 
+
 ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_point() ## it seems that education vs income are pretty random... ok to both use in the model. 
 
 ## fishing_org_members: hypothesis: a larger fishing organization size will place less value on tracking tech because they feel safer while fishing... more people around to help if something goes wrong. They also probably share more information with eachother anyways? 
 
 ## log(wtp) = B0 + B1*sos + B2*info + B3*own1 + B4*own2 + B5*own3 + B6*log(gdp_prop) + B7*log(years_fishing) + B8*log(fishing_org_members) + B9*educationprimary + B10*educationsecondary + B11*educationuniversity + B11*educationvocational 
 ## note that we do not report the fixed effects in our results. "Fixed effects on the country (Mexico and Indonesia) were included"
-
-## "By controlling for country in the original equation, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico."
-
 ```
 
 ```{r}
@@ -298,7 +298,7 @@ $$ log(WTP) = \beta_{0} +  \beta_{1}*SOS - \beta_{2}info + \beta_{3}*ownfisher +
 
 $$  = 1.67 +  0.17*SOS - 0.05*info + 0.13*ownfisher + 0.06*ownindustry + 0.03*owngov - 0.15*log(gdp prop) \\ + 0.037*log(years fishing) - 0.029*log(fishing org members) + 0.15*eduprimary + \\ 0.24*edusecondary + 0.41*eduuni + 0.35*eduvocational $$
 
-The unconditional expected geometric mean of our willingness to pay variable is $$e^{1.67596} = \$ 5.34.$$ 
+The unconditional expected geometric mean of our willingness to pay variable is $$e^{1.67596} = \$ 5.34.$$  ---- **IS THIS RIGHT? Do I need to subtract by something since we did that in the rcode for the model since we couldnt take the log of a negative number??**
 
 **Categorical Predictors (Approximate Interpretation):**
 
