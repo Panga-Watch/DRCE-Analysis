@@ -140,7 +140,7 @@ wtp_distribution <-bind %>%
   mutate(log_wtp= log(wtp_p4)) %>% 
   gather(variable, value) 
   
-
+library(ggalt)
 wtp_distribution %>% 
  ggplot(aes(x = value, fill = variable)) +
     geom_bkde() +
@@ -193,7 +193,7 @@ variables_income<-variables %>%
   mutate(gdp_prop = income_usd/NY.GDP.PCAP.KD)
 
 gdp_prop<-variables_income %>% 
-  select(survey_id, gdp_prop)
+  select(survey_id, gdp_prop, income_usd, NY.GDP.PCAP.KD)
   
 
 ggplot(variables_income, aes(x=income_usd))+
@@ -215,37 +215,178 @@ variables_edu<-variables %>%
   mutate(education = ifelse(education == "other", "secondary", education)) 
 ```
 
+```{r}
+#gapfill means for each village for variable "fishing_org_members"... except for MNC.. gapfill with overall indonesia mean 
+# 61.86538 is the average fishing org size from survey in IND round up to 62 
+
+members_group <- variables %>%
+  select(survey_id, country, community, fishing_org_members) %>%
+  group_by(community) %>%
+  summarise(mean_mem = round(mean(fishing_org_members, na.rm = TRUE),0))
+
+variables_members <- variables %>%
+  select(survey_id, country, community, fishing_org_members) %>%
+  mutate(fishing_org_members = as.numeric(fishing_org_members)) %>%
+  left_join(members_group) %>%
+  mutate(gapfill_members = ifelse(is.na(fishing_org_members), 1, 0),
+         fishing_org_members = case_when(
+           is.na(fishing_org_members) & community != "MNC" ~ mean_mem,
+           is.na(fishing_org_members & community == "MNC") ~ 62, 
+           !is.na(fishing_org_members) ~ fishing_org_members)) %>%
+      select(survey_id, country, community, fishing_org_members)
+
+
+
+```
+
+
 Combining corrected variables (income and education) with years_fishing, age, community
 
 ```{r}
 variables_log<-variables %>% 
   select(survey_id, country, community, years_fishing, age) %>% 
   left_join(variables_edu) %>% 
-  left_join(gdp_prop)
+  left_join(gdp_prop) %>%
+  left_join(variables_members)
 ```
 
 
 ```{r}
-bind_log <- bind_log %>%
+bind_log_final <- bind_log %>%
   left_join(variables_log) %>%
   within(own <- relevel(own, ref = 4))
 
-wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + education + factor(country), data = bind_log)
+wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + log(fishing_org_members) + education + factor(country), data = bind_log_final)
 
 summary(wtp_lm)
 
+## years_fishing adds more predictive power and has a lower p value than age -- use years_fishing 
+## hypothesis: the longer someone has been fishing the more value they put into having this technology.
+
+## income/gdp_prop: hypothesis: a higher income will place a higher value on the technology... model disagrees.. could have an interesting dialogue 
+
+## education: a more educated person will likely want to pay more for this technology.. they will see more benefit in it. 
+ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_point() ## it seems that education vs income are pretty random... ok to both use in the model. 
+
+## fishing_org_members: hypothesis: a larger fishing organization size will place less value on tracking tech because they feel safer while fishing... more people around to help if something goes wrong. They also probably share more information with eachother anyways? 
+
+## log(wtp) = B0 + B1*sos + B2*info + B3*own1 + B4*own2 + B5*own3 + B6*log(gdp_prop) + B7*log(years_fishing) + B8*log(fishing_org_members) + B9*educationprimary + B10*educationsecondary + B11*educationuniversity + B11*educationvocational 
+## note that we do not report the fixed effects in our results. "Fixed effects on the country (Mexico and Indonesia) were included"
+
+## "By controlling for country in the original equation, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico."
+
 ```
 
-Trying other variables
 ```{r}
+# calculate exact percent change in WTP for our categorical variables 
+coef_lm <- as.data.frame(wtp_lm$coefficients) %>%
+  tibble::rownames_to_column("Beta") %>%
+  mutate(on = exp(wtp_lm$coefficients) - 1 , off = exp(-wtp_lm$coefficients) - 1)
+
+## TODO ## Figure out the interpretation of the continuous variables 
+```
+
+
+How to interpret our coefficients:
+The coefficient on a dummy variable with a log-transformed Y variable is interpreted as the percentage change in Y associated with having the dummy variable characteristic relative to the omitted category, with all other included X variables held fixed.
+
+## Results: 
+By controlling for country in the original equation as fixed effects within our model, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico.
+
+The unconditional expected geometric mean of our willingness to pay variable is $1.67596. 
+
+
+
+**Predictors that are categorical (Approximate Interpretation):**
+ - Predicted WTP is approximately 17% higher with an SOS button, than not with one. 
+ 
+ - Predicted WTP is approximately 5% lower with non anonymity, than with anonymity.
+ 
+ - Predicted WTP is approximately 13% higher when fishers own the data, than when it is publicly available.
+ 
+ - Predicted WTP is approximately 6.5% higher when industry owns the data, than when it is publicly available. 
+ 
+ - Predicted WTP is approximately 3.5% higher when government owns the data, than when it is publicly available.
+ 
+ - Predicted WTP is approximately 15% higher when respondent had primary education, than no formal education.
+ 
+ - Predicted WTP is approximately 24% higher when respondent had secondary education, than no formal education.
+ 
+ - Predicted WTP is approximately 41% higher when respondent had university education, than no formal education.
+ 
+ - Predicted WTP is approximately 35% higher when respondent had vocational education, than no formal education.
+ 
+**Predictors that are categorical (Exact Interpretation):**
+I will only show the proof for one of our categorical variables, as it could get redundant otherwise. 
+
+SOS: 
+
+$$ "Turning \ SOS \ on" \ \frac{(PWTP_{SOS = 1} - PWTP_{SOS = 0})}{PWTP_{SOS = 0}} = \frac{PWTP_{SOS = 1}}{PWTP_{SOS = 0}} - 1 = e^{\beta_1} - 1 = e^{0.1718} - 1 =  0.18744 $$
+ - With an SOS functionality, on average, WTP for this technology is 18.74% percent higher than not having SOS functionality, holding the rest of our variables constant.
+ 
+ $$ "Turning \ SOS \ off" \  \frac{(PWTP_{SOS = 0} - PWTP_{SOS = 1})}{PWTP_{SOS = 1}} = \frac{PWTP_{SOS = 0}}{PWTP_{SOS = 1}} - 1 = e^{\beta_1} - 1 = e^{-0.1718} - 1 =  -0.1578 $$
+ - Without an SOS functionality, on average, WTP for this technology is 15.78% less than having an SOS functionality, holding the rest of our variables constant. 
+ 
+ The rest of the exact interpretation calculations are done in the same was as above. 
+ 
+**Information Access:**
+ -  Being non-anonymous in the data, on average, WTP for this technology is 4.8% percent less than being anonymous in the data, holding the rest of our variables constant.
+  -  Being anonymous in the data, on average, WTP for this technology is 5.1% percent higher than being non-anonymous in the data, holding the rest of our variables constant.
+  
+**Ownership of data: **
+ -  With fisher ownership of the data, on average, WTP for this technology is 14.04% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 12.31% percent less than fisher ownership of the data, holding the rest of our variables constant.
+ 
+  -  With industry ownership of the data, on average, WTP for this technology is 6.8% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 6.3% percent less than industry ownership of the data, holding the rest of our variables constant.
+ 
+   -  With government ownership of the data, on average, WTP for this technology is 3.6% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 3.4% percent less than government ownership of the data, holding the rest of our variables constant.
+ 
+ **Education:** 
+ -  With primary education, on average, WTP for this technology is 16.7% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 14.3% percent less than having primary education, holding the rest of our variables constant.
+ 
+ -  With secondary education, on average, WTP for this technology is 28.2% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 22% percent less than having secondary education, holding the rest of our variables constant.
+ 
+ -  With university education, on average, WTP for this technology is 51% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 33.7% percent less than having university education, holding the rest of our variables constant.
+ 
+ -  With vocational education, on average, WTP for this technology is 41.9% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 29.5% percent less than having vocational education, holding the rest of our variables constant.
+ 
+Predictors that are continuous:
+
+
+
+
+```{r, include = FALSE}
 fishing_income<-read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
   select(survey_id, income_fishing) %>% 
-  right_join(bind_log) %>% 
+  right_join(bind_log_final) %>% 
   na.omit() %>% 
   filter(income_fishing!=0)
 
-wtp_lm_x <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + log(income_fishing)  + factor(country), data = fishing_income)
+wtp_lm_x <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + log(income_fishing)  + education + factor(country), data = fishing_income)
 
 summary(wtp_lm_x)
 ```
+
+Notes and relevant links:
+
+ - https://stats.stackexchange.com/questions/240572/log-log-regression-dummy-variable-and-index
+ 
+ - https://rpubs.com/rslbliss/fixed_effects
+ 
+ - https://blogs.sas.com/content/iml/2011/04/27/log-transformations-how-to-handle-negative-data-values.html
+ 
+ - https://stats.idre.ucla.edu/other/mult-pkg/faq/general/faqhow-do-i-interpret-a-regression-model-when-some-variables-are-log-transformed/
+
+By controlling for female in the original equation, we are estimating the relationship between hours worked and weekly salary having adjusted for systematic differences in hours worked and weekly salary between females and males. (A bit wordy, yes, but this is my preferred interpretation.)
+
+Fixed effects (in the context of this page) are just a fancy extension of the idea of controlling for a categorical variable.
+
+As a presentation note, people often do not present the actual fixed effects estimates in their results. They often just note that fixed effects were included, but don’t present the actual numbers because they are not typically interpreted.
+
 

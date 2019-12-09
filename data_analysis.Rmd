@@ -77,32 +77,48 @@ standard_predictions_data <- data.frame(standard_opt_out, standard_predictions) 
 # own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
 #adopt : 1 = accept, 0 = decline
 
-standard_predictions_data <- standard_predictions_data %>%
+standard_predictions_data_final <- standard_predictions_data %>%
   mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
          level_se = se.fit/(se.fit + 1)) %>%
   select(-fit, -se.fit, -STR) %>%
   arrange(-`probability (%)`) %>%
   select(package, info, own, sos, `probability (%)`, level_se) %>%
   group_by(package, info, own, sos) %>%
-  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) %>%
-  mutate(info = case_when(
-    info == 0 ~ "Anon",
-    info == 1 ~ "Non-Anon"
-  ), 
-  own = case_when(
-   own == 1 ~ "Fishers",
-   own == 2 ~ "Industry", 
-   own == 3 ~ "Government", 
-   own == 4 ~ "Public Access"
-  ),
-  sos = case_when(
-    sos == 0 ~ "No",
-    sos == 1 ~ "Yes"
-  ))
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) 
 
 write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FALSE)
 
 DT::datatable(standard_predictions_data)
+
+## group by sos to get sos probability
+standard_predictions_data_sos <- standard_predictions_data %>%
+  mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-`probability (%)`) %>%
+  select(package, info, own, sos, `probability (%)`, level_se) %>%
+  group_by(sos) %>%
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se))
+
+## group by info to get info probability
+standard_predictions_data_info <- standard_predictions_data %>%
+  mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-`probability (%)`) %>%
+  select(package, info, own, sos, `probability (%)`, level_se) %>%
+  group_by(info) %>%
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se))
+
+## group by own to get own probability
+standard_predictions_data_own <- standard_predictions_data %>%
+  mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-`probability (%)`) %>%
+  select(package, info, own, sos, `probability (%)`, level_se) %>%
+  group_by(own) %>%
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se))
 ```
 
 
