@@ -293,6 +293,11 @@ The coefficient on a dummy variable with a log-transformed Y variable is interpr
 ## Results: 
 By controlling for country in the original equation as fixed effects within our model, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico.
 
+$$ log(WTP) = \beta_{0} +  \beta_{1}*SOS - \beta_{2}info + \beta_{3}*ownfisher + \beta_{4}*ownindustry + \beta_{5}*owngov - \beta_{6}*log(gdp prop) + \beta_{7}*log(years fishing) \\
+- \beta_{8}*log(fishing org members) + \beta_{9}*eduprimary + \beta_{10}*edusecondary + \beta_{11}*eduuni + \beta_{12}*eduvocational \\ $$
+
+$$  = 1.67 +  0.17*SOS - 0.05*info + 0.13*ownfisher + 0.06*ownindustry + 0.03*owngov - 0.15*log(gdp prop) \\ + 0.037*log(years fishing) - 0.029*log(fishing org members) + 0.15*eduprimary + \\ 0.24*edusecondary + 0.41*eduuni + 0.35*eduvocational $$
+
 The unconditional expected geometric mean of our willingness to pay variable is $$e^{1.67596} = 5.34$$ .
 
 **Categorical Predictors (Approximate Interpretation):**
