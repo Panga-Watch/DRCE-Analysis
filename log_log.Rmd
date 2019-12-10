@@ -215,7 +215,13 @@ ggplot(variables_income, aes(x=gdp_prop))+
 variables_edu<-variables %>% 
   select(survey_id, country, community, education) %>%  
   mutate(education=as.character(education)) %>% 
-  mutate(education = ifelse(education == "other", "secondary", education)) 
+  mutate(education = ifelse(education == "other", "secondary", education)) %>%
+  mutate(education = case_when(
+    education == "no_formal" ~ "no_formal",
+    education == "primary" | education == "secondary" ~ "formal",
+    education == "university" | education == "vocational" ~ "higher"
+  )) %>%
+  mutate(education = as.factor(education))
 ```
 
 ```{r}
@@ -238,32 +244,75 @@ variables_members <- variables %>%
            !is.na(fishing_org_members) ~ fishing_org_members)) %>%
       select(survey_id, country, community, fishing_org_members)
 
-
-
 ```
+
+```{r}
+## tidy up fishtech variable... combine into one.. they have exposure to a type of fishing technology, or they don't.
+
+variables_fishtech <- variables %>%
+    select(survey_id, country, community, starts_with("fishtech")) %>%
+  mutate(fishtech = ifelse(fishtech_none == 1, 0, 1),
+         fishtech = ifelse(fishtech_vhf == 1, 1, fishtech),
+         fishtech = ifelse(is.na(fishtech_none), 0, fishtech)) %>%
+  select(survey_id, country, community, fishtech)
+```
+
 
 
 Combining corrected variables (income and education) with years_fishing, age, community
 
 ```{r}
+avg_years_fish_by_country <- variables %>%
+  group_by(country) %>%
+  summarise(mean(years_fishing)) ## use this value to gapfill for the one case where years_fishing > age... works because the mean is less than the age. 
+
+variables_fishing_years <-
+  variables %>%
+  select(survey_id, country, community, years_fishing, age) %>%
+  mutate(years_fishing = ifelse(years_fishing > age, 22.5, years_fishing))
+```
+
+```{r}
 variables_log<-variables %>% 
-  select(survey_id, country, community, years_fishing, age) %>% 
+  select(survey_id, country, community, years_fishing, age, boat_length_m) %>% 
   left_join(variables_edu) %>% 
   left_join(gdp_prop) %>%
-  left_join(variables_members)
+  left_join(variables_members) %>%
+  left_join(variables_fishtech) %>%
+  left_join(variables_fishing_years)
+
 ```
 
 
 ```{r}
 bind_log_final <- bind_log %>%
   left_join(variables_log) %>%
-  within(own <- relevel(own, ref = 4))
+  within(own <- relevel(own, ref = 4)) %>%
+  within(education <- relevel(education, ref = "no_formal"))
 
-wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + education + factor(country), data = bind_log_final)
+wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + factor(country), data = bind_log_final)
 
 summary(wtp_lm)
-
 autoplot(wtp_lm, which = 1:6, ncol = 3, label.size = 3)
+
+wtp_lm_1 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(years_fishing) + education + factor(country), data = bind_log_final)
+
+wtp_lm_2 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(boat_length_m) + education + factor(country), data = bind_log_final)
+
+wtp_lm_3 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(boat_length_m) + education + fishtech + factor(country), data = bind_log_final) 
+
+wtp_lm_4 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + fishtech + factor(country), data = bind_log_final) 
+summary(wtp_lm_4)
+
+wtp_lm_5 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(years_fishing) + education + fishtech + factor(country), data = bind_log_final)
+
+wtp_lm_6 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + log(years_fishing) + education + fishtech + factor(country), data = bind_log_final) 
+
+wtp_lm_7 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + education + fishtech + factor(country), data = bind_log_final) 
+
+wtp_lm_8 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country), data = bind_log_final) 
+
+AIC(wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8) ## take the lowest one... which is wtp_lm_7... still feel like we should include a continuous variable... gdp_prop? then we would take wtp_lm_4
 
 ## years_fishing adds more predictive power and has a lower p value than age -- use years_fishing 
 ## hypothesis: the longer someone has been fishing the more value they put into having this technology.
