@@ -259,9 +259,11 @@ bind_log_final <- bind_log %>%
   left_join(variables_log) %>%
   within(own <- relevel(own, ref = 4))
 
-wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + log(fishing_org_members) + education + factor(country), data = bind_log_final)
+wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + education + factor(country), data = bind_log_final)
 
 summary(wtp_lm)
+
+autoplot(wtp_lm, which = 1:6, ncol = 3, label.size = 3)
 
 ## years_fishing adds more predictive power and has a lower p value than age -- use years_fishing 
 ## hypothesis: the longer someone has been fishing the more value they put into having this technology.
@@ -290,13 +292,16 @@ coef_lm <- as.data.frame(wtp_lm$coefficients) %>%
 How to interpret our coefficients:
 The coefficient on a dummy variable with a log-transformed Y variable is interpreted as the percentage change in Y associated with having the dummy variable characteristic relative to the omitted category, with all other included X variables held fixed.
 
+Justification for using a log-log model:
+For interpretation. In economics, we are sometimes interested how a percentage change in x affects the percentage change in y. This called elasticity. We can estimate elasticity (f) by using a log-log model
+
 ## Results: 
 By controlling for country in the original equation as fixed effects within our model, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico.
 
 $$ log(WTP) = \beta_{0} +  \beta_{1}*SOS - \beta_{2}info + \beta_{3}*ownfisher + \beta_{4}*ownindustry + \beta_{5}*owngov - \beta_{6}*log(gdp prop) + \beta_{7}*log(years fishing) \\
 - \beta_{8}*log(fishing org members) + \beta_{9}*eduprimary + \beta_{10}*edusecondary + \beta_{11}*eduuni + \beta_{12}*eduvocational \\ $$
 
-$$  = 1.67 +  0.17*SOS - 0.05*info + 0.13*ownfisher + 0.06*ownindustry + 0.03*owngov - 0.15*log(gdp prop) \\ + 0.037*log(years fishing) - 0.029*log(fishing org members) + 0.15*eduprimary + \\ 0.24*edusecondary + 0.41*eduuni + 0.35*eduvocational $$
+$$  = 1.67 +  0.17*SOS - 0.05*info + 0.13*ownfisher + 0.06*ownindustry + 0.03*owngov - 0.015*log(gdp prop) \\ + 0.037*log(years fishing) - 0.029*log(fishing org members) + 0.15*eduprimary + \\ 0.24*edusecondary + 0.41*eduuni + 0.35*eduvocational $$
 
 The unconditional expected geometric mean of our willingness to pay variable is $$e^{1.67596} = \$ 5.34.$$  ---- **IS THIS RIGHT? Do I need to subtract by something since we did that in the rcode for the model since we couldnt take the log of a negative number??**
 
@@ -328,7 +333,7 @@ SOS:
 $$ "Turning \ SOS \ on" \ \frac{(WTP_{SOS = 1} - WTP_{SOS = 0})}{WTP_{SOS = 0}} = \frac{WTP_{SOS = 1}}{WTP_{SOS = 0}} - 1 = e^{\beta_1} - 1 = e^{0.1718} - 1 =  0.18744 $$
  - With an SOS functionality, on average, WTP for this technology is 18.74% percent higher than not having SOS functionality, holding the rest of our variables constant.
  
- $$ "Turning \ SOS \ off" \  \frac{(WTP_{SOS = 0} - WTP_{SOS = 1})}{WTP_{SOS = 1}} = \frac{WTP_{SOS = 0}}{WTP_{SOS = 1}} - 1 = e^{\beta_1} - 1 = e^{-0.1718} - 1 =  -0.1578 $$
+ $$ "Turning \ SOS \ off" \  \frac{(WTP_{SOS = 0} - WTP_{SOS = 1})}{WTP_{SOS = 1}} = \frac{WTP_{SOS = 0}}{WTP_{SOS = 1}} - 1 = e^{-\beta_1} - 1 = e^{-0.1718} - 1 =  -0.1578 $$
  - Without an SOS functionality, on average, WTP for this technology is 15.78% less than having an SOS functionality, holding the rest of our variables constant. 
  
  The rest of the exact interpretation calculations are done in the same was as above. 
