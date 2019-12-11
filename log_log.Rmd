@@ -331,6 +331,16 @@ variables_log<-variables %>%
   left_join(variables_rankone)
 
 ```
+basic lm
+
+```{r}
+basic_wtp_lm <- lm(wtp  ~ sos + info + own  + fishtech + factor(country) + rank_one + gdp_prop, data = bind_log_final)
+
+summary(basic_wtp_lm)
+
+#AIC score is 916.8084, which is 800+ higher than other models. So no to the linear model. 
+
+```
 
 
 ```{r}
@@ -370,7 +380,8 @@ wtp_lm_11 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(
 wtp_lm_12 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + rank_one + log(gdp_prop), data = bind_log_final) 
 
 summary(wtp_lm_12)
-AIC(wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8) ## take the lowest one... which is wtp_lm_7... still feel like we should include a continuous variable... gdp_prop? then we would take wtp_lm_4
+AIC(wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, basic_wtp_lm) ## take the lowest one... which is wtp_lm_7... still feel like we should include a continuous variable... gdp_prop? then we would take wtp_lm_4
+## BR: New winner is wtp_lm_12. Boom. 
 
 ## years_fishing adds more predictive power and has a lower p value than age -- use years_fishing 
 ## hypothesis: the longer someone has been fishing the more value they put into having this technology.
@@ -386,6 +397,7 @@ ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_p
 ## log(wtp) = B0 + B1*sos + B2*info + B3*own1 + B4*own2 + B5*own3 + B6*log(gdp_prop) + B7*log(years_fishing) + B8*log(fishing_org_members) + B9*educationprimary + B10*educationsecondary + B11*educationuniversity + B11*educationvocational 
 ## note that we do not report the fixed effects in our results. "Fixed effects on the country (Mexico and Indonesia) were included"
 ```
+
 
 ```{r}
 # calculate exact percent change in WTP for our categorical variables 
