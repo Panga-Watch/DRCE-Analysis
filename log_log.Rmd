@@ -166,7 +166,7 @@ wtp_distribution %>%
 variables <- read_csv("int/variables.csv")
 
 variables_log<-variables %>% 
-  select(survey_id, country, community, income, years_fishing, age, education)
+  select(survey_id, country, community, income, years_fishing, age, education, boat_status)
   
 #income conversion
 #0.000071 USD / 1 Indonesian Rupiah 
@@ -206,7 +206,31 @@ ggplot(variables_income, aes(x=income_usd))+
 ggplot(variables_income, aes(x=gdp_prop))+
   geom_histogram()+
   facet_wrap(~country)
+
+#There are incomes that are really low, all from WKB, seems like they are off by 10^6. Mayeb we should make correction? 
+
+low_income<-variables %>% 
+  filter(community=="WKB")
 ```
+
+Income from fishing, percent-gap filled
+```{r}
+fishincome <- variables %>%
+  select(survey_id, country, community, income_fishing) %>%
+  group_by(community) %>%
+  summarise(mean_fishincome = round(mean(income_fishing, na.rm = TRUE),0))
+
+variables_fishincome <- variables %>%
+  select(survey_id, country, community, income_fishing) %>%
+  mutate(income_fishing = as.numeric(income_fishing)) %>%
+  left_join(fishincome) %>%
+  mutate(gf_fishincome = ifelse(is.na(income_fishing), 1, 0)) %>% 
+  mutate(income_fishing = ifelse(is.na(income_fishing), mean_fishincome, 
+                                 ifelse(income_fishing ==0, mean_fishincome, income_fishing))) %>% 
+  select(survey_id, country, community, income_fishing)
+
+```
+
 
 
 ```{r}
@@ -272,14 +296,39 @@ variables_fishing_years <-
   mutate(years_fishing = ifelse(years_fishing > age, 22.5, years_fishing))
 ```
 
+simplify boat ownership 
+```{r}
+variables_boat_own <- variables %>% 
+  mutate(boat_own = ifelse(boat_status == "own", 1,0)) %>% 
+  select(survey_id, boat_own)
+```
+
+```{r}
+problems<-variables %>% 
+  select(survey_id, community, rank_one) %>% 
+  mutate(rank = as.factor(rank_one)) %>% 
+  group_by(community) %>% 
+  count(rank)
+#RAJ= MAX(weather), total NA = 4
+#WKB =  MAX(IUU), total NA = 1
+
+variables_rankone<-variables %>% 
+  select(survey_id, community, rank_one) %>%
+  mutate(rank_one = ifelse(is.na(rank_one) & community == "RAJ", "weather", 
+                           ifelse(is.na(rank_one) & community =="WKB", "iuu", rank_one)))
+```
+
 ```{r}
 variables_log<-variables %>% 
-  select(survey_id, country, community, years_fishing, age, boat_length_m) %>% 
+  select(survey_id, country, community, years_fishing, age, boat_length_m, fishing_organization) %>% 
   left_join(variables_edu) %>% 
   left_join(gdp_prop) %>%
   left_join(variables_members) %>%
   left_join(variables_fishtech) %>%
-  left_join(variables_fishing_years)
+  left_join(variables_fishing_years) %>% 
+  left_join(variables_boat_own) %>% 
+  left_join(variables_fishincome) %>% 
+  left_join(variables_rankone)
 
 ```
 
@@ -312,6 +361,15 @@ wtp_lm_7 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + education + fishtec
 
 wtp_lm_8 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country), data = bind_log_final) 
 
+wtp_lm_9 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country) + boat_own, data = bind_log_final) 
+
+wtp_lm_10 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country) + fishing_organization, data = bind_log_final) 
+
+wtp_lm_11 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + log(gdp_prop) + log(income_fishing), data = bind_log_final) 
+
+wtp_lm_12 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + rank_one + log(gdp_prop), data = bind_log_final) 
+
+summary(wtp_lm_12)
 AIC(wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8) ## take the lowest one... which is wtp_lm_7... still feel like we should include a continuous variable... gdp_prop? then we would take wtp_lm_4
 
 ## years_fishing adds more predictive power and has a lower p value than age -- use years_fishing 
