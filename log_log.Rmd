@@ -156,22 +156,59 @@ wtp_distribution %>%
 
 
 
-
-
-
-
-# Adding variables Income, Education, Years Fishing, Age, Country
-
 ```{r}
 variables <- read_csv("int/variables.csv")
 
 variables_log<-variables %>% 
   select(survey_id, country, community, income, years_fishing, age, education, boat_status)
+```
+
+
+
+
+Adding variables Income, Education, Years Fishing, Age, Country
+
+Outlier detection
+```{r}
+
+library(magrittr)
+library(qwraps2)
+library(kableExtra)
+
+
+income_summary <-
+  list("Monthly Income" =
+       list("min" = ~ min(.data$income),
+            "max" = ~ max(.data$income),
+            "mean (sd)" = ~ qwraps2::mean_sd(.data$income)))
+
+income_na<-variables %>% 
+  select(community, income) %>% 
+  na.omit() %>% 
+  mutate(community = as.factor(community))
   
-#income conversion
+by_com<-summary_table(dplyr::group_by(income_na, community), income_summary)
+kable(by_com)
+
+#HUGE distribution of income in IND, especially in WKB (10^7 difference) min is a single digit number, which does not make sense for Indonesia (Annual income for lowest income would be $0.0043) 
+
+#Fixing for Wkb income error & currency conversion 
+
 #0.000071 USD / 1 Indonesian Rupiah 
 #0.052 USD / 1 Medican Peso
 
+income_fix<-variables %>% 
+  select(survey_id, country, community, income) %>%
+  mutate(income = ifelse(country == "IND" & income<= 10, income*1000000, income)) %>% 
+  mutate(currency = ifelse(country=="MEX", 0.052, 0.000071)) %>% 
+  mutate(income_usd = currency*income*12) %>% 
+  mutate(income_usd = round(income_usd, digits = 2))
+
+usd_com_mean<-income_fix %>% 
+  group_by(community) %>% 
+  summarise(mean_income = mean(income_usd, na.rm = TRUE))
+
+#adding in GDP per Capita conversion 
 library(WDI)
 
 gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018, end = 2018) %>% 
@@ -179,38 +216,15 @@ gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018,
   rename(c = 1) %>% 
   select(-c, -year)
 
-#community mean income to fill NA values for income
-
-com_mean<-variables %>% 
-  group_by(community) %>% 
-  summarise(mean_income = mean(income, na.rm = TRUE))
-
-variables_income<-variables %>% 
-  select(survey_id, country, community, income) %>%
-  left_join(com_mean) %>%
+variables_income_fix<-income_fix %>% 
+  left_join(usd_com_mean) %>%
   mutate(gf_income = ifelse(is.na(income), 1, 0)) %>% 
-  mutate(income = ifelse(is.na(income), mean_income, income)) %>% 
-  mutate(currency = ifelse(country=="MEX", 0.052, 0.000071)) %>% 
-  mutate(income_usd = currency*income*12) %>% 
+  mutate(income_usd = ifelse(is.na(income), mean_income, income_usd)) %>% 
   left_join(gdp_raw) %>% 
   mutate(gdp_prop = income_usd/NY.GDP.PCAP.KD)
 
-gdp_prop<-variables_income %>% 
+gdp_prop<-variables_income_fix %>% 
   select(survey_id, gdp_prop, income_usd, NY.GDP.PCAP.KD)
-  
-
-ggplot(variables_income, aes(x=income_usd))+
-  geom_histogram()+
-  facet_wrap(~country)
-
-ggplot(variables_income, aes(x=gdp_prop))+
-  geom_histogram()+
-  facet_wrap(~country)
-
-#There are incomes that are really low, all from WKB, seems like they are off by 10^6. Mayeb we should make correction? 
-
-low_income<-variables %>% 
-  filter(community=="WKB")
 ```
 
 Income from fishing, percent-gap filled
@@ -331,6 +345,20 @@ variables_log<-variables %>%
   left_join(variables_rankone)
 
 ```
+
+
+
+```{r}
+bind_log_final <- bind_log %>%
+  left_join(variables_log) %>%
+  within(own <- relevel(own, ref = 4)) %>%
+  within(education <- relevel(education, ref = "no_formal"))
+
+wtpmin<- min(bind_log_final$wtp)
+
+```
+
+
 basic lm
 
 ```{r}
@@ -344,11 +372,6 @@ summary(basic_wtp_lm)
 
 
 ```{r}
-bind_log_final <- bind_log %>%
-  left_join(variables_log) %>%
-  within(own <- relevel(own, ref = 4)) %>%
-  within(education <- relevel(education, ref = "no_formal"))
-
 wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + factor(country), data = bind_log_final)
 
 summary(wtp_lm)
@@ -398,6 +421,10 @@ ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_p
 ## note that we do not report the fixed effects in our results. "Fixed effects on the country (Mexico and Indonesia) were included"
 ```
 
+```{r}
+predict_lm12<-cbind(bind_log_final, fitted = fitted(wtp_lm_12)) %>% 
+  mutate(wtp_predict = (fitted - 1 + min(wtp)))
+```
 
 ```{r}
 # calculate exact percent change in WTP for our categorical variables 
