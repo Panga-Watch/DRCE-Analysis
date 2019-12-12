@@ -23,9 +23,8 @@ theme_set(theme_pubr())
 
 ```{r, include=FALSE}
 # Read in all of the raw data
-survey <- read_csv("raw/master_survey_resp.csv", string) %>% 
-  left_join(bind_df) %>% 
-  mutate(wtp=as.factor(wtp))
+survey <- read_csv("raw/master_survey_resp.csv")
+
 
 header_key <- read_csv("raw/survey_header_key.csv")
 
@@ -46,10 +45,59 @@ quant <- header_key %>%
 ```
 
 ```{r}
-bind_df<-bind %>% 
-  filter(choice==1) %>% 
-  select(survey_id, wtp) 
+library(skimr)
+library(summarytools)
+
+#summary table for categorical results 
+var_factor<-header_key %>% 
+  filter(type == "factor") %>% 
+  select(-question)
+
+result_fac<-survey %>% 
+  gather(column_header, response, -survey_id) %>% 
+  right_join(var_factor) %>% 
+  select(-type) %>% 
+  spread(column_header, response)
+
+dfSummary(result_fac, style = "grid", plain.ascii = TRUE, graph.col =FALSE)
+
+
+
+
+#summary table for continuous/numeric results
+
+var_integer<-header_key %>% 
+  filter(type == "integer") %>% 
+  select(-question)
+
+result_int<-survey %>% 
+  gather(column_header, response, -survey_id) %>% 
+  right_join(var_integer) %>% 
+  select(-type) %>% 
+  mutate(response=as.integer(response)) %>% 
+  spread(column_header, response)
+
+dfSummary(result_int, style = "grid", plain.ascii = TRUE, graph.col =FALSE)
   
+
+
+#cleaning market fraction section, filling NA values for rows that amount to 100% as 0. 
+
+market<-survey %>% 
+  select(starts_with("fraction")) %>% 
+  mutate(total = rowSums(., na.rm = TRUE)) %>% 
+  mutate_at(1:5, funs(ifelse(total == 100, replace(., is.na(.), 0), .))) %>% 
+  select(-total) 
+
+dfSummary(market, style = "grid", plain.ascii = TRUE, graph.col =FALSE)
+
+income<-survey %>% 
+  mutate(currency = ifelse(country=="MEX", 0.052, 0.000071)) %>% 
+  mutate(income_usd = currency*income*12) %>% 
+  mutate(income_usd = round(income_usd, digits = 2)) %>% 
+  select(income_usd)
+
+dfSummary(income, style = "grid", plain.ascii = TRUE, graph.col =FALSE)
 
 ```
 
@@ -103,7 +151,7 @@ In the last 12 months, what fishing gear have you used?
 ```{r, echo=FALSE}
 q4<-survey %>% 
   mutate(gear_buceo = ifelse(grepl("Buceo", other_gear), 1, 0)) %>% 
-  select(starts_with("gear"), survey_id, wtp) %>% 
+  select(starts_with("gear")) %>% 
   na.omit() 
   
   
@@ -119,7 +167,7 @@ q4_sum<-q4 %>%
   rename_at(vars(oldnames4), ~ newnames4)%>% 
   summarise_all(sum, na.rm = TRUE) %>% 
   gather(gear, Count) %>% 
-#  mutate(Percent = round((Count/q4_response)*100, 0)) %>% 
+  mutate(Percent = round((Count/q4_response)*100, 0)) %>% 
   rename(Gear = 1) %>% 
   arrange(-Count)
 ```
