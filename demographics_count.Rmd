@@ -99,6 +99,26 @@ income<-survey %>%
 
 dfSummary(income, style = "grid", plain.ascii = TRUE, graph.col =FALSE)
 
+#creating a bin frequency table for age
+
+binFreqTable <- function(x, bins) {
+
+  freq = hist(x, breaks=bins, include.lowest=TRUE, plot=FALSE)
+
+  ranges = paste(head(freq$breaks,-1), freq$breaks[-1], sep=" - ")
+
+  return(data.frame(range = ranges, frequency = freq$counts))
+
+}
+
+
+binFreqTable(result_int$years_fishing , 10)
+
+
+binFreqTable(income$income_usd, 20)
+
+
+
 ```
 
 # Results  
