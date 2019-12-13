@@ -84,9 +84,27 @@ standard_predictions_data_final <- standard_predictions_data %>%
   arrange(-`probability (%)`) %>%
   select(package, info, own, sos, `probability (%)`, level_se) %>%
   group_by(package, info, own, sos) %>%
-  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) 
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se))  %>%
+  ungroup() %>%
+  mutate(info = case_when(
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
+  ),
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry",
+   own == 3 ~ "Government",
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
+  )) %>%
+  arrange(-`probability (%)`)
 
-write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FALSE)
+
+
+write.csv(standard_predictions_data_final, "output/standard_probs.csv", row.names = FALSE)
 
 DT::datatable(standard_predictions_data)
 
@@ -186,7 +204,16 @@ forced_log <- logLik(forced_clogit) #-22.24721 (df=5)
 
 -2*(74.11078 - (42.90397 + 22.24721)) #17.9192
 # if this then 17.9192 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced........... need to write this up formally
+
 ```
+
+Methods Log Lik Test:
+We can test the effect of forced choice versus unforced choice using a likelihood ratio test for equality. The test statistic is:
+
+$$ -2*(LL_{r} - \sum LL{u}) $$
+Which is chi-squared distributed with K(M-1) degrees of freedom, where K is the number of restrictions (5), M is the number of treatments (2). The null hypothesis of the test is that the parameters are not significantly different between treatments. This means that if we do not reject the null, we can use the standard opt out method without worry of respondent bias. If the test statistic exceeds the critical value, found in the chi square table, then evidence suggests that the treatments sufficiently contribute to explaining the model and reject the null hypothesis of no difference between the forced and unforced datasets. 
+
+
 
 **Make pooled predictions using linear predictors given from model and calculate marginal probabilities based off of the status quo and GFW tech**
 ```{r}
@@ -654,21 +681,21 @@ standard_predictions_data <- standard_predictions_data %>%
   arrange(-`probability (%)`) %>%
   select(package, info, own, sos, `probability (%)`, level_se) %>%
   group_by(package, info, own, sos) %>%
-  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) %>%
-  mutate(info = case_when(
-    info == 0 ~ "Anon",
-    info == 1 ~ "Non-Anon"
-  ), 
-  own = case_when(
-   own == 1 ~ "Fishers",
-   own == 2 ~ "Industry", 
-   own == 3 ~ "Government", 
-   own == 4 ~ "Public Access"
-  ),
-  sos = case_when(
-    sos == 0 ~ "No",
-    sos == 1 ~ "Yes"
-  ))
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) 
+  # mutate(info = case_when(
+  #   info == 0 ~ "Anon",
+  #   info == 1 ~ "Non-Anon"
+  # ), 
+  # own = case_when(
+  #  own == 1 ~ "Fishers",
+  #  own == 2 ~ "Industry", 
+  #  own == 3 ~ "Government", 
+  #  own == 4 ~ "Public Access"
+  # ),
+  # sos = case_when(
+  #   sos == 0 ~ "No",
+  #   sos == 1 ~ "Yes"
+  # ))
 
 write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FALSE)
 
@@ -749,9 +776,4 @@ wtp_2 = $3.62
 wtp_3 = $5.17
 wtp_4 = $7.75
 
-```{r}
-
-
-
-```
 
