@@ -443,9 +443,11 @@ library(stargazer)
 
 ```{r}
 # calculate exact percent change in WTP for our categorical variables 
-coef_lm <- as.data.frame(wtp_lm$coefficients) %>%
+coef_lm <- as.data.frame(wtp_lm_14$coefficients) %>%
   tibble::rownames_to_column("Beta") %>%
-  mutate(on = exp(wtp_lm$coefficients) - 1 , off = exp(-wtp_lm$coefficients) - 1)
+  mutate(on = exp(wtp_lm_14$coefficients) - 1 , off = exp(-wtp_lm_14$coefficients) - 1)
+
+write.csv(coef_lm, "output/wtp_results_14.csv", row.names = FALSE)
 
 ```
 
