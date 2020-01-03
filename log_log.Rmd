@@ -409,7 +409,7 @@ wtp_lm_14 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(
 
 summary(wtp_lm_12)
 summary(wtp_lm_13)
-summary(wtp_lm_14)
+summary(wtp_lm_14, cluster = c("country"))
 
 AIC(wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, basic_wtp_lm, wtp_lm_13, wtp_lm_14) ## take the lowest one... which is wtp_lm_7... still feel like we should include a continuous variable... gdp_prop? then we would take wtp_lm_4
 ## BR: New winner is wtp_lm_12. Boom. 
@@ -432,6 +432,23 @@ ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = fishtech)) + geom_po
 
 ggplot(bind_log_final, aes(x = income_usd, y = fishtech, color = fishtech)) + geom_point() 
 ```
+
+Include new summary function that incorporates clusters
+```{r}
+# load necessary packages for importing the function
+library(RCurl)
+ 
+# import the function from repository
+url_robust <- "https://raw.githubusercontent.com/IsidoreBeautrelet/economictheoryblog/master/robust_summary.R"
+eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
+     envir=.GlobalEnv)
+
+summary(wtp_lm_14)
+summary(wtp_lm_14, cluster = c("community")) ## this changes standard errors and significant values by clustering on community... what Ignacia suggested doing.
+
+```
+
+
 
 ```{r}
 predict_lm12<-cbind(bind_log_final, fitted = fitted(wtp_lm_12)) %>% 
