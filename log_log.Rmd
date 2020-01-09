@@ -444,7 +444,15 @@ eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
      envir=.GlobalEnv)
 
 summary(wtp_lm_14)
-summary(wtp_lm_14, cluster = c("community")) ## this changes standard errors and significant values by clustering on community... what Ignacia suggested doing.
+summary(wtp_lm_14, cluster = c("community"))
+summary(wtp_lm_14, cluster = c("country"))
+## this changes standard errors and significant values by clustering on community... what Ignacia suggested doing.
+
+ggplot(bind_log_final, aes(x = community, y = wtp)) + 
+  geom_point()
+
+ggplot(bind_log_final, aes(x = country, y = wtp)) + 
+  geom_point()
 
 ```
 
