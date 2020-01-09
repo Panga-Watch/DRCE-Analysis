@@ -1,0 +1,693 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+# install.packages("sandwich")
+library(tidyverse)
+library(ggfortify)
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(viridis)
+library(ggthemes)
+library(DT)
+library(sandwich)
+```
+
+
+
+
+# BLR including WTP
+```{r}
+#data formatting 
+choice<- read.csv("raw/version_to_package.csv", stringsAsFactors = TRUE) %>% 
+  rename(survey_version = 1)
+
+packages<- read.csv("raw/packages.csv", stringsAsFactors = TRUE)  %>% 
+  rename(package = 1)
+
+choice_package<-choice %>% 
+  left_join(packages) %>% 
+  mutate(choice = ifelse(package <=16,1,2))
+
+
+survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
+  select(survey_id, survey_version, country, choice, package_nopackage, starts_with("wtp"), starts_with("wtr"))
+
+pack_yes<- survey %>% 
+  filter(package_nopackage == 1) %>% 
+  mutate(wtp = ifelse(wtp_4== "y", 4,
+                      ifelse(wtp_4== "n", 3,
+                             ifelse(wtp_3=="n", 2,
+                                    ifelse(wtp_2=="n", 1, 0))))) %>% 
+  select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=1)
+
+pack_no <- survey %>% 
+  filter(package_nopackage == 0) %>% 
+  mutate(wtp = ifelse(wtr_4== "y", -4,
+                      ifelse(wtr_4== "n", -5,
+                             ifelse(wtr_3=="y", -3,
+                                    ifelse(wtr_2=="y", -2, -1))))) %>% 
+  select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=1)
+
+pack_no_no<-pack_no %>% 
+  mutate(wtp=(wtp+1)) %>% 
+  mutate(choice = 0)
+
+pack_yes_no<-pack_yes %>% 
+  filter(wtp!=4) %>% 
+  mutate(wtp=(wtp+1)) %>% 
+  mutate(choice = 0)
+
+bind_pre<-rbind(pack_no,pack_yes, pack_no_no, pack_yes_no) %>% 
+  filter(wtp!=-5)
+
+other_pack<-bind_pre %>% 
+  select(survey_id, survey_version, country,  choice) %>%
+  mutate(choice = ifelse(choice == 1,2,1)) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=0) %>% 
+  mutate(wtp=0)
+
+bind<-rbind(bind_pre, other_pack) 
+
+```
+
+For IND
+
+wtp_1 = $2.14
+wtp_2 = $3.56
+wtp_3 = $5.35
+wtp_4 = $7.12
+
+For MEX 
+
+wtp_1 = $2.07
+wtp_2 = $3.62
+wtp_3 = $5.17
+wtp_4 = $7.75
+
+```{r}
+
+bind_ind<-bind %>% 
+  filter(country=="IND") %>% 
+  mutate(wtp = ifelse(wtp == -4, -7.12,
+                       ifelse(wtp == -3, -5.35, 
+                              ifelse(wtp == -2, -3.56,
+                                      ifelse(wtp == -1, -2.14, 
+                                             ifelse(wtp == 0, 0, 
+                                                    ifelse(wtp == 1, 2.14, 
+                                                           ifelse(wtp == 2, 3.56, 
+                                                                  ifelse(wtp == 3, 5.35, 7.12)))))))))
+
+bind_mex<-bind %>% 
+  filter(country=="MEX") %>% 
+  mutate(wtp = ifelse(wtp == -4, -7.75,
+                       ifelse(wtp == -3, -5.17, 
+                              ifelse(wtp == -2, -3.62,
+                                      ifelse(wtp == -1, -2.07, 
+                                             ifelse(wtp == 0, 0, 
+                                                    ifelse(wtp == 1, 2.07, 
+                                                           ifelse(wtp == 2, 3.62, 
+                                                                  ifelse(wtp == 3, 5.17, 7.75)))))))))
+
+bind_wtp<-rbind(bind_mex,bind_ind) %>% 
+  mutate(own=as.factor(own))
+
+
+#making the df to be used for log-log
+bind_log<-bind_wtp %>% 
+  filter(choice == 1) %>% 
+  mutate(sos = ifelse(sos==1,0,1)) %>% 
+  mutate(info = ifelse(info == 2,0,1)) %>% 
+  mutate(own=as.factor(own)) 
+
+```
+
+
+```{r}
+wtp_distribution <-bind %>% 
+  filter(choice == 1) %>% 
+  select(wtp) %>%
+  mutate(wtp_p4 = wtp + 4) %>% 
+  mutate(log_wtp= log(wtp_p4)) %>% 
+  gather(variable, value) 
+  
+library(ggalt)
+wtp_distribution %>% 
+ ggplot(aes(x = value, fill = variable)) +
+    geom_bkde() +
+    geom_rug() +
+    scale_fill_viridis(guide = FALSE, discrete = TRUE) +
+    facet_wrap(~variable, scales = "free") +
+    theme_base()
+
+```
+
+
+
+```{r}
+variables <- read_csv("int/variables.csv")
+
+variables_log<-variables %>% 
+  select(survey_id, country, community, income, years_fishing, age, education, boat_status)
+```
+
+
+
+
+Adding variables Income, Education, Years Fishing, Age, Country
+
+Outlier detection
+```{r}
+
+library(magrittr)
+library(qwraps2)
+library(kableExtra)
+
+
+income_summary <-
+  list("Monthly Income" =
+       list("min" = ~ min(.data$income),
+            "max" = ~ max(.data$income),
+            "mean (sd)" = ~ qwraps2::mean_sd(.data$income)))
+
+income_na<-variables %>% 
+  select(community, income) %>% 
+  na.omit() %>% 
+  mutate(community = as.factor(community))
+  
+by_com<-summary_table(dplyr::group_by(income_na, community), income_summary)
+kable(by_com)
+
+#HUGE distribution of income in IND, especially in WKB (10^7 difference) min is a single digit number, which does not make sense for Indonesia (Annual income for lowest income would be $0.0043) 
+
+#Fixing for Wkb income error & currency conversion 
+
+#0.000071 USD / 1 Indonesian Rupiah 
+#0.052 USD / 1 Medican Peso
+
+income_fix<-variables %>% 
+  select(survey_id, country, community, income) %>%
+  mutate(income = ifelse(country == "IND" & income<= 10, income*1000000, income)) %>% 
+  mutate(currency = ifelse(country=="MEX", 0.052, 0.000071)) %>% 
+  mutate(income_usd = currency*income*12) %>% 
+  mutate(income_usd = round(income_usd, digits = 2))
+
+usd_com_mean<-income_fix %>% 
+  group_by(community) %>% 
+  summarise(mean_income = mean(income_usd, na.rm = TRUE))
+
+#adding in GDP per Capita conversion 
+library(WDI)
+
+gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018, end = 2018) %>% 
+  mutate(country=ifelse(country=="Mexico", "MEX", "IND")) %>% 
+  rename(c = 1) %>% 
+  select(-c, -year)
+
+variables_income_fix<-income_fix %>% 
+  left_join(usd_com_mean) %>%
+  mutate(gf_income = ifelse(is.na(income), 1, 0)) %>% 
+  mutate(income_usd = ifelse(is.na(income), mean_income, income_usd)) %>% 
+  left_join(gdp_raw) %>% 
+  mutate(gdp_prop = income_usd/NY.GDP.PCAP.KD)
+
+gdp_prop<-variables_income_fix %>% 
+  select(survey_id, gdp_prop, income_usd, NY.GDP.PCAP.KD)
+```
+
+Income from fishing, percent-gap filled
+```{r}
+fishincome <- variables %>%
+  select(survey_id, country, community, income_fishing) %>%
+  group_by(community) %>%
+  summarise(mean_fishincome = round(mean(income_fishing, na.rm = TRUE),0))
+
+variables_fishincome <- variables %>%
+  select(survey_id, country, community, income_fishing) %>%
+  mutate(income_fishing = as.numeric(income_fishing)) %>%
+  left_join(fishincome) %>%
+  mutate(gf_fishincome = ifelse(is.na(income_fishing), 1, 0)) %>% 
+  mutate(income_fishing = ifelse(is.na(income_fishing), mean_fishincome, 
+                                 ifelse(income_fishing ==0, mean_fishincome, income_fishing))) %>% 
+  select(survey_id, country, community, income_fishing)
+
+```
+
+
+
+```{r}
+
+#education
+variables_edu<-variables %>% 
+  select(survey_id, country, community, education) %>%  
+  mutate(education=as.character(education)) %>% 
+  mutate(education = ifelse(education == "other", "secondary", education)) %>%
+  mutate(education = case_when(
+    education == "no_formal" ~ "no_formal",
+    education == "primary" | education == "secondary" ~ "formal",
+    education == "university" | education == "vocational" ~ "higher"
+  )) %>%
+  mutate(education = as.factor(education))
+```
+
+```{r}
+#gapfill means for each village for variable "fishing_org_members"... except for MNC.. gapfill with overall indonesia mean 
+# 61.86538 is the average fishing org size from survey in IND round up to 62 
+
+members_group <- variables %>%
+  select(survey_id, country, community, fishing_org_members) %>%
+  group_by(community) %>%
+  summarise(mean_mem = round(mean(fishing_org_members, na.rm = TRUE),0))
+
+variables_members <- variables %>%
+  select(survey_id, country, community, fishing_org_members) %>%
+  mutate(fishing_org_members = as.numeric(fishing_org_members)) %>%
+  left_join(members_group) %>%
+  mutate(gapfill_members = ifelse(is.na(fishing_org_members), 1, 0),
+         fishing_org_members = case_when(
+           is.na(fishing_org_members) & community != "MNC" ~ mean_mem,
+           is.na(fishing_org_members & community == "MNC") ~ 62, 
+           !is.na(fishing_org_members) ~ fishing_org_members)) %>%
+      select(survey_id, country, community, fishing_org_members)
+
+```
+
+```{r}
+## tidy up fishtech variable... combine into one.. they have exposure to a type of fishing technology, or they don't.
+
+variables_fishtech <- variables %>%
+    select(survey_id, country, community, starts_with("fishtech")) %>%
+  mutate(fishtech = ifelse(fishtech_none == 1, 0, 1),
+         fishtech = ifelse(fishtech_vhf == 1, 1, fishtech),
+         fishtech = ifelse(is.na(fishtech_none), 0, fishtech)) %>%
+  select(survey_id, country, community, fishtech)
+```
+
+
+
+Combining corrected variables (income and education) with years_fishing, age, community
+
+```{r}
+avg_years_fish_by_country <- variables %>%
+  group_by(country) %>%
+  summarise(mean(years_fishing)) ## use this value to gapfill for the one case where years_fishing > age... works because the mean is less than the age. 
+
+variables_fishing_years <-
+  variables %>%
+  select(survey_id, country, community, years_fishing, age) %>%
+  mutate(years_fishing = ifelse(years_fishing > age, 22.5, years_fishing))
+```
+
+simplify boat ownership 
+```{r}
+variables_boat_own <- variables %>% 
+  mutate(boat_own = ifelse(boat_status == "own", 1,0)) %>% 
+  select(survey_id, boat_own)
+```
+
+```{r}
+problems<-variables %>% 
+  select(survey_id, community, rank_one) %>% 
+  mutate(rank = as.factor(rank_one)) %>% 
+  group_by(community) %>% 
+  count(rank)
+#RAJ= MAX(weather), total NA = 4
+#WKB =  MAX(IUU), total NA = 1
+
+variables_rankone<-variables %>% 
+  select(survey_id, community, rank_one) %>%
+  mutate(rank_one = ifelse(is.na(rank_one) & community == "RAJ", "weather", 
+                           ifelse(is.na(rank_one) & community =="WKB", "iuu", rank_one)))
+```
+
+```{r}
+variables_log<-variables %>% 
+  select(survey_id, country, community, years_fishing, age, boat_length_m, fishing_organization, punishment_severity, opinion_a, opinion_b, opinion_c, opinion_d, opinion_e, opinion_f, opinion_g, opinion_h, opinion_i, trust_a, trust_b, trust_c, trust_d, trust_e, trust_f, trust_g, trust_h, trust_i, trust_j, trust_k, trust_l, catch_trends, income_fishing, income_expenses) %>% 
+  left_join(variables_edu) %>% 
+  left_join(gdp_prop) %>%
+  left_join(variables_members) %>%
+  left_join(variables_fishtech) %>%
+  left_join(variables_fishing_years) %>% 
+  left_join(variables_boat_own) %>% 
+  left_join(variables_fishincome) %>% 
+  left_join(variables_rankone)
+
+```
+
+
+
+```{r}
+bind_log_final <- bind_log %>%
+  left_join(variables_log) %>%
+  within(own <- relevel(own, ref = 4)) %>%
+  within(education <- relevel(education, ref = "no_formal"))
+
+wtpmin<- min(bind_log_final$wtp)
+
+```
+
+
+basic lm
+
+```{r}
+basic_wtp_lm <- lm(wtp  ~ sos + info + own  + fishtech + factor(country) + rank_one + gdp_prop, data = bind_log_final)
+
+summary(basic_wtp_lm)
+
+#AIC score is 916.8084, which is 800+ higher than other models. So no to the linear model. 
+
+```
+
+
+```{r}
+wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + factor(country), data = bind_log_final)
+
+summary(wtp_lm)
+autoplot(wtp_lm, which = 1:6, ncol = 3, label.size = 3)
+
+wtp_lm_1 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(years_fishing) + education + factor(country), data = bind_log_final)
+
+wtp_lm_2 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(boat_length_m) + education + factor(country), data = bind_log_final)
+
+wtp_lm_3 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(boat_length_m) + education + fishtech + factor(country), data = bind_log_final) 
+
+wtp_lm_4 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + fishtech + factor(country), data = bind_log_final) 
+summary(wtp_lm_4)
+
+wtp_lm_5 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(years_fishing) + education + fishtech + factor(country), data = bind_log_final)
+
+wtp_lm_6 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + log(years_fishing) + education + fishtech + factor(country), data = bind_log_final) 
+
+wtp_lm_7 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + education + fishtech + factor(country), data = bind_log_final) 
+
+wtp_lm_8 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country), data = bind_log_final) 
+
+wtp_lm_9 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country) + boat_own, data = bind_log_final) 
+
+wtp_lm_10 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country) + fishing_organization, data = bind_log_final) 
+
+wtp_lm_11 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + log(gdp_prop) + log(income_fishing), data = bind_log_final) 
+
+wtp_lm_12 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + rank_one + log(gdp_prop), data = bind_log_final) 
+
+wtp_lm_13 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + rank_one + log(gdp_prop) + education, data = bind_log_final) 
+
+wtp_lm_14 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + rank_one + education, data = bind_log_final) 
+
+# CATCH TRENDS
+
+wtp_lm_15 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + catch_trends, data = bind_log_final) 
+
+summary(wtp_lm_15)
+
+# Opinion C: PERCEPTION OF FISHING STOCK STATUS "In general, the fisheries in this region are doing well". 5: Strongly agree, implies a .38% reduction in payment.
+
+wtp_lm_16 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + factor(opinion_c), data = bind_log_final) 
+
+summary(wtp_lm_16)
+# case_when with this one. if 4 or 5, = healthy. if 1 or 2 = unhealthy. if 3 = neutral.
+
+# Opinion F: PERCEPTION OF INDUSTRIAL OUTSIDE FISHING "Outside industrial fishers are always entering our fishing grounds/concession". 
+
+wtp_lm_17 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + factor(opinion_f), data = bind_log_final) 
+# wtp increases as they agree more that industrial fishers are entering their grounds. But the highest value is number 3 (neutral)
+
+summary(wtp_lm_17)
+
+ # Trust in Fishing association leaders (TRUST C): 37.c. Please indicate how much you trust the following groups: c. Fishing association leaders
+
+wtp_lm_18 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + factor(trust_c), data = bind_log_final) 
+
+summary(wtp_lm_18)
+
+# The more they trust in fishing association leaders, the less they are willing to pay. Does it make sense??
+
+# Trust in POLICE 36.e
+wtp_lm_19 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + factor(trust_e), data = bind_log_final) 
+
+summary(wtp_lm_19)
+
+# The more they trust in police, the less they are wiling to pay
+
+wtp_lm_20 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + factor(trust_k), data = bind_log_final) 
+
+summary(wtp_lm_20)
+
+# % income from fishing
+
+wtp_lm_21 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + income_fishing, data = bind_log_final) 
+
+summary(wtp_lm_21)
+
+# % income expenses in fishing
+
+wtp_lm_22 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + income_expenses, data = bind_log_final) 
+
+summary(wtp_lm_22)
+
+
+
+summary(wtp_lm_12)
+summary(wtp_lm_13)
+summary(wtp_lm_14, cluster = c("country"))
+
+AIC(wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, basic_wtp_lm, wtp_lm_13, wtp_lm_14) ## take the lowest one... which is wtp_lm_7... still feel like we should include a continuous variable... gdp_prop? then we would take wtp_lm_4
+## BR: New winner is wtp_lm_12. Boom. 
+
+## years_fishing adds more predictive power and has a lower p value than age -- use years_fishing 
+## hypothesis: the longer someone has been fishing the more value they put into having this technology.
+
+## income/gdp_prop: hypothesis: a higher income will place a higher value on the technology... model disagrees.. could have an interesting dialogue 
+
+## education: a more educated person will likely want to pay more for this technology.. they will see more benefit in it. However, possible that we have some collinearity with education and income... should we debunk this? 
+
+ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_point() ## it seems that education vs income are pretty random... ok to both use in the model. 
+
+## fishing_org_members: hypothesis: a larger fishing organization size will place less value on tracking tech because they feel safer while fishing... more people around to help if something goes wrong. They also probably share more information with eachother anyways? 
+
+## log(wtp) = B0 + B1*sos + B2*info + B3*own1 + B4*own2 + B5*own3 + B6*log(gdp_prop) + B7*log(years_fishing) + B8*log(fishing_org_members) + B9*educationprimary + B10*educationsecondary + B11*educationuniversity + B11*educationvocational 
+## note that we do not report the fixed effects in our results. "Fixed effects on the country (Mexico and Indonesia) were included"
+
+ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = fishtech)) + geom_point() 
+
+ggplot(bind_log_final, aes(x = income_usd, y = fishtech, color = fishtech)) + geom_point() 
+```
+
+Include new summary function that incorporates clusters
+```{r}
+# load necessary packages for importing the function
+library(RCurl)
+ 
+# import the function from repository
+url_robust <- "https://raw.githubusercontent.com/IsidoreBeautrelet/economictheoryblog/master/robust_summary.R"
+eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
+     envir=.GlobalEnv)
+
+summary(wtp_lm_14)
+summary(wtp_lm_14, cluster = c("community"))
+summary(wtp_lm_14, cluster = c("country"))
+## this changes standard errors and significant values by clustering on community... what Ignacia suggested doing.
+
+ggplot(bind_log_final, aes(x = community, y = wtp)) + 
+  geom_point()
+
+ggplot(bind_log_final, aes(x = country, y = wtp)) + 
+  geom_point()
+
+```
+
+
+
+```{r}
+predict_lm12<-cbind(bind_log_final, fitted = fitted(wtp_lm_12)) %>% 
+  mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
+
+library(stargazer)
+```
+
+
+```{r}
+# calculate exact percent change in WTP for our categorical variables 
+coef_lm <- as.data.frame(wtp_lm_14$coefficients) %>%
+  tibble::rownames_to_column("Beta") %>%
+  mutate(on = exp(wtp_lm_14$coefficients) - 1 , off = exp(-wtp_lm_14$coefficients) - 1)
+
+write.csv(coef_lm, "output/wtp_results_14.csv", row.names = FALSE)
+
+```
+
+
+How to interpret our coefficients:
+The coefficient on a dummy variable with a log-transformed Y variable is interpreted as the percentage change in Y associated with having the dummy variable characteristic relative to the omitted category, with all other included X variables held fixed.
+
+Justification for using a log-log model:
+For interpretation. In economics, we are sometimes interested how a percentage change in x affects the percentage change in y. This called elasticity. We can estimate elasticity (f) by using a log-log model
+
+## Results: 
+By controlling for country in the original equation as fixed effects within our model, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico.
+
+$$ log(WTP) = \beta_{0} +  \beta_{1}*SOS - \beta_{2}info + \beta_{3}*ownfisher + \beta_{4}*ownindustry + \beta_{5}*owngov - \beta_{6}*log(gdp prop) + \beta_{7}*log(years fishing) \\
+- \beta_{8}*log(fishing org members) + \beta_{9}*eduprimary + \beta_{10}*edusecondary + \beta_{11}*eduuni + \beta_{12}*eduvocational \\ $$
+
+$$  = 1.67 +  0.17*SOS - 0.05*info + 0.13*ownfisher + 0.06*ownindustry + 0.03*owngov - 0.015*log(gdp prop) \\ + 0.037*log(years fishing) - 0.029*log(fishing org members) + 0.15*eduprimary + \\ 0.24*edusecondary + 0.41*eduuni + 0.35*eduvocational $$
+
+The unconditional expected geometric mean of our willingness to pay variable is $$e^{1.67596} = \$ 5.34.$$  ---- **IS THIS RIGHT? Do I need to subtract by something since we did that in the rcode for the model since we couldnt take the log of a negative number??**
+
+**Categorical Predictors (Approximate Interpretation):**
+
+ - Predicted WTP is approximately 17% higher with an SOS button, than not with one. 
+ 
+ - Predicted WTP is approximately 5% lower with non anonymity, than with anonymity.
+ 
+ - Predicted WTP is approximately 13% higher when fishers own the data, than when it is publicly available.
+ 
+ - Predicted WTP is approximately 6.5% higher when industry owns the data, than when it is publicly available. 
+ 
+ - Predicted WTP is approximately 3.5% higher when government owns the data, than when it is publicly available.
+ 
+ - Predicted WTP is approximately 15% higher when respondent had primary education, than no formal education.
+ 
+ - Predicted WTP is approximately 24% higher when respondent had secondary education, than no formal education.
+ 
+ - Predicted WTP is approximately 41% higher when respondent had university education, than no formal education.
+ 
+ - Predicted WTP is approximately 35% higher when respondent had vocational education, than no formal education.
+ 
+**Categorical Predictors (Exact Interpretation):**
+I will only show the proof for one of our categorical variables, as it could get redundant otherwise. 
+
+SOS: 
+
+$$ "Turning \ SOS \ on" \ \frac{(WTP_{SOS = 1} - WTP_{SOS = 0})}{WTP_{SOS = 0}} = \frac{WTP_{SOS = 1}}{WTP_{SOS = 0}} - 1 = e^{\beta_1} - 1 = e^{0.1718} - 1 =  0.18744 $$
+ - With an SOS functionality, on average, WTP for this technology is 18.74% percent higher than not having SOS functionality, holding the rest of our variables constant.
+ 
+ $$ "Turning \ SOS \ off" \  \frac{(WTP_{SOS = 0} - WTP_{SOS = 1})}{WTP_{SOS = 1}} = \frac{WTP_{SOS = 0}}{WTP_{SOS = 1}} - 1 = e^{-\beta_1} - 1 = e^{-0.1718} - 1 =  -0.1578 $$
+ - Without an SOS functionality, on average, WTP for this technology is 15.78% less than having an SOS functionality, holding the rest of our variables constant. 
+ 
+ The rest of the exact interpretation calculations are done in the same was as above. 
+ 
+Information Access:
+
+ -  Being non-anonymous in the data, on average, WTP for this technology is 4.8% percent less than being anonymous in the data, holding the rest of our variables constant.
+  -  Being anonymous in the data, on average, WTP for this technology is 5.1% percent higher than being non-anonymous in the data, holding the rest of our variables constant.
+  
+Ownership of data: 
+
+ -  With fisher ownership of the data, on average, WTP for this technology is 14.04% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 12.31% percent less than fisher ownership of the data, holding the rest of our variables constant.
+ 
+  -  With industry ownership of the data, on average, WTP for this technology is 6.8% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 6.3% percent less than industry ownership of the data, holding the rest of our variables constant.
+ 
+   -  With government ownership of the data, on average, WTP for this technology is 3.6% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 3.4% percent less than government ownership of the data, holding the rest of our variables constant.
+ 
+ Education:
+ 
+ -  With primary education, on average, WTP for this technology is 16.7% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 14.3% percent less than having primary education, holding the rest of our variables constant.
+ 
+ -  With secondary education, on average, WTP for this technology is 28.2% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 22% percent less than having secondary education, holding the rest of our variables constant.
+ 
+ -  With university education, on average, WTP for this technology is 51% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 33.7% percent less than having university education, holding the rest of our variables constant.
+ 
+ -  With vocational education, on average, WTP for this technology is 41.9% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 29.5% percent less than having vocational education, holding the rest of our variables constant.
+ 
+**Continuous Predictors (Exact Interpretation):**
+
+gdp_prop (proxy for income usd):
+
+ - For a one unit increase in gdp_prop, we expect to see a 1.58% decrease in WTP. 
+ 
+ years_fishing: 
+ 
+  - For a one unit increase in years_fishing, we expect to see a 3.78% increase in WTP.
+  
+fishing_org_members: 
+
+ - For a one unit increase in fishing_org_members, we expect to see a 2.92% decrease in WTP.
+ 
+ **Continuous Predictors Effects**
+
+Lets focus on the effect of our of our continuous predictor variables, years_fishing. Take two values of years_fishing, m1 and m2, and hold the other predictor variables at any fixed value. 
+
+$$ log(WTP(m_{2})) - log(WTP(m_{1})) = \beta_{7}*[log(m_{2} - m_{1})] $$
+$$ log[\frac{WTP(m_{2})}{WTP(m_{1})}] = \beta_{7}*[log(\frac{m_{2}}{m_{1}})] $$
+leading to 
+$$ \frac{WTP(m_{2})}{WTP(m_{1})} = (\frac{m_{2}}{m_{1}})^{\beta_{7}} $$
+
+This tells us that as long as the ratio of the two years_fishing stays the same, $$\frac{m_{2}}{m_{1}}$$ stays the same, the expected ratio of the outcome variable, WTP, stays the same. For example, we can say that for any 10% increase in years_fishing, the expected ratio of the WTP will be $$(1.10)^{β_{7}} = (1.10)^{0.03718} = 1.00355. $$ In other words, we expect about .355% increase in WTP when years_fishing increases by 10%. See the table below for the effect of every %increase of a continuous predictor variable by 1% on WTP. 
+
+
+
+```{r}
+percent <- seq(from = 1, to = 1.99, by = 0.01)
+beta_years_fishing <- data.frame(beta_value = rep(wtp_lm$coefficients[8], 100), beta_name = rep("years_fishing", 100))
+
+effects_years_fishing <- cbind(percent, beta_years_fishing)
+
+beta_gdp_prop <- data.frame(beta_value = rep(wtp_lm$coefficients[7], 100), beta_name = rep("gdp_prop", 100))
+effects_gdp_prop <- cbind(percent, beta_gdp_prop)
+
+beta_fishing_org_members <- data.frame(beta_value = rep(wtp_lm$coefficients[9], 100), beta_name = rep("fishing_org_members", 100))
+effects_fishing_org_members <- cbind(percent, beta_fishing_org_members)
+
+actual_continuous_effects <- rbind(effects_years_fishing, effects_gdp_prop, effects_fishing_org_members) %>% mutate(increase_decrease_WTP = ifelse(
+  beta_value < 0, -1*(1 - (percent)^beta_value), (percent)^beta_value - 1))
+```
+
+```{r}
+datatable(actual_continuous_effects)
+```
+
+
+
+
+```{r, include = FALSE}
+fishing_income<-read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
+  select(survey_id, income_fishing) %>% 
+  right_join(bind_log_final) %>% 
+  na.omit() %>% 
+  filter(income_fishing!=0)
+
+wtp_lm_x <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + log(income_fishing)  + education + factor(country), data = fishing_income)
+
+summary(wtp_lm_x)
+```
+
+Notes and relevant links:
+
+ - https://stats.stackexchange.com/questions/240572/log-log-regression-dummy-variable-and-index
+ 
+ - https://rpubs.com/rslbliss/fixed_effects
+ 
+ - https://blogs.sas.com/content/iml/2011/04/27/log-transformations-how-to-handle-negative-data-values.html
+ 
+ - https://stats.idre.ucla.edu/other/mult-pkg/faq/general/faqhow-do-i-interpret-a-regression-model-when-some-variables-are-log-transformed/
+
+By controlling for female in the original equation, we are estimating the relationship between hours worked and weekly salary having adjusted for systematic differences in hours worked and weekly salary between females and males. (A bit wordy, yes, but this is my preferred interpretation.)
+
+Fixed effects (in the context of this page) are just a fancy extension of the idea of controlling for a categorical variable.
+
+As a presentation note, people often do not present the actual fixed effects estimates in their results. They often just note that fixed effects were included, but don’t present the actual numbers because they are not typically interpreted.
+
+
