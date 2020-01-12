@@ -19,11 +19,6 @@ library(dplyr)
 library(viridis)
 library(ggthemes)
 library(DT)
-library(magrittr)
-library(qwraps2)
-library(kableExtra)
-library(ggalt)
-library(WDI)
 ```
 
 
@@ -149,6 +144,7 @@ wtp_distribution <-bind %>%
   mutate(log_wtp= log(wtp_p4)) %>% 
   gather(variable, value) 
   
+library(ggalt)
 wtp_distribution %>% 
  ggplot(aes(x = value, fill = variable)) +
     geom_bkde() +
@@ -168,10 +164,18 @@ variables_log<-variables %>%
   select(survey_id, country, community, income, years_fishing, age, education, boat_status)
 ```
 
-Adding variables Income, Education, Years Fishing, Age, Country, Fishing Organization Members, Biggest problem facing fishery, fishing technology exposure, boat ownership.
+
+
+
+Adding variables Income, Education, Years Fishing, Age, Country
 
 Outlier detection
 ```{r}
+
+library(magrittr)
+library(qwraps2)
+library(kableExtra)
+
 
 income_summary <-
   list("Monthly Income" =
@@ -206,6 +210,8 @@ usd_com_mean<-income_fix %>%
   summarise(mean_income = mean(income_usd, na.rm = TRUE))
 
 #adding in GDP per Capita conversion 
+library(WDI)
+
 gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018, end = 2018) %>% 
   mutate(country=ifelse(country=="Mexico", "MEX", "IND")) %>% 
   rename(c = 1) %>% 
@@ -241,7 +247,9 @@ variables_fishincome <- variables %>%
 ```
 
 
+
 ```{r}
+
 #education
 variables_edu<-variables %>% 
   select(survey_id, country, community, education) %>%  
@@ -351,27 +359,20 @@ wtpmin<- min(bind_log_final$wtp)
 
 ```
 
-Include new summary function that incorporates clusters
-```{r}
-# load necessary packages for importing the function
-library(RCurl)
- 
-# import the function from repository
-url_robust <- "https://raw.githubusercontent.com/IsidoreBeautrelet/economictheoryblog/master/robust_summary.R"
-eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
-     envir=.GlobalEnv)
-```
 
+basic lm
 
 ```{r}
-## Traditional linear regression:
 basic_wtp_lm <- lm(wtp  ~ sos + info + own  + fishtech + factor(country) + rank_one + gdp_prop, data = bind_log_final)
 
 summary(basic_wtp_lm)
 
-#AIC score is 916.8084, which is 800+ higher than other models. So no to the linear model
+#AIC score is 916.8084, which is 800+ higher than other models. So no to the linear model. 
 
-## Test log-log models:
+```
+
+
+```{r}
 wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + factor(country), data = bind_log_final)
 
 summary(wtp_lm)
@@ -405,17 +406,18 @@ wtp_lm_10 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fi
 wtp_lm_11 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + log(gdp_prop) + log(income_fishing), data = bind_log_final) 
 
 wtp_lm_12 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + rank_one + log(gdp_prop), data = bind_log_final) 
+summary(wtp_lm_12, cluster = c("community"))
 
 wtp_lm_13 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + rank_one + log(gdp_prop) + education, data = bind_log_final) 
 
 wtp_lm_14 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech  + rank_one + education, data = bind_log_final) 
 
-wtp_lm_15 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + rank_one + education, data = bind_log_final) 
+summary(wtp_lm_12)
+summary(wtp_lm_13)
+summary(wtp_lm_14, cluster = c("community"))
 
-AIC(basic_wtp_lm, wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, wtp_lm_13, wtp_lm_14, wtp_lm_15) ## take the lowest one...  
-
-
-######## Random Hypotheses ########
+AIC(wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, basic_wtp_lm, wtp_lm_13, wtp_lm_14) ## take the lowest one... which is wtp_lm_7... still feel like we should include a continuous variable... gdp_prop? then we would take wtp_lm_4
+## BR: New winner is wtp_lm_12. Boom. 
 
 ## years_fishing adds more predictive power and has a lower p value than age -- use years_fishing 
 ## hypothesis: the longer someone has been fishing the more value they put into having this technology.
@@ -424,37 +426,61 @@ AIC(basic_wtp_lm, wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_
 
 ## education: a more educated person will likely want to pay more for this technology.. they will see more benefit in it. However, possible that we have some collinearity with education and income... should we debunk this? 
 
-## fishing_org_members: hypothesis: a larger fishing organization size will place less value on tracking tech because they feel safer while fishing... more people around to help if something goes wrong. They also probably share more information with eachother anyways? <---- don't include this. Not all of our respondents were in a fishing organizatio..
-
-## Test if education and income are correlated. 
 ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_point() ## it seems that education vs income are pretty random... ok to both use in the model. 
+
+## fishing_org_members: hypothesis: a larger fishing organization size will place less value on tracking tech because they feel safer while fishing... more people around to help if something goes wrong. They also probably share more information with eachother anyways? 
+
+## log(wtp) = B0 + B1*sos + B2*info + B3*own1 + B4*own2 + B5*own3 + B6*log(gdp_prop) + B7*log(years_fishing) + B8*log(fishing_org_members) + B9*educationprimary + B10*educationsecondary + B11*educationuniversity + B11*educationvocational 
+## note that we do not report the fixed effects in our results. "Fixed effects on the country (Mexico and Indonesia) were included"
+
+ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = fishtech)) + geom_point() 
+
+ggplot(bind_log_final, aes(x = income_usd, y = fishtech, color = fishtech)) + geom_point() 
 ```
 
-Take a look at summary output (clustered on community) for our 3 best models: 
+Include new summary function that incorporates clusters
 ```{r}
+# load necessary packages for importing the function
+library(RCurl)
+ 
+# import the function from repository
+url_robust <- "https://raw.githubusercontent.com/IsidoreBeautrelet/economictheoryblog/master/robust_summary.R"
+eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
+     envir=.GlobalEnv)
+
 summary(wtp_lm_14)
 summary(wtp_lm_14, cluster = c("community"))
+summary(wtp_lm_14, cluster = c("country"))
+## this changes standard errors and significant values by clustering on community... what Ignacia suggested doing.
 
+wtp_lm_15 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + rank_one + education, data = bind_log_final) 
 summary(wtp_lm_15, cluster = c("community"))
 
+ggplot(bind_log_final, aes(x = community, y = wtp)) + 
+  geom_point()
+
+ggplot(bind_log_final, aes(x = country, y = wtp)) + 
+  geom_point()
+
 ```
 
 
 
 ```{r}
-## Predict values for our best models
 predict_lm12<-cbind(bind_log_final, fitted = fitted(wtp_lm_12)) %>% 
   mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
+
+library(stargazer)
 ```
 
 
 ```{r}
-# calculate exact percent change in WTP for our categorical variables for our best models
-coef_lm_14 <- as.data.frame(wtp_lm_14$coefficients) %>%
+# calculate exact percent change in WTP for our categorical variables 
+coef_lm <- as.data.frame(wtp_lm_14$coefficients) %>%
   tibble::rownames_to_column("Beta") %>%
   mutate(on = exp(wtp_lm_14$coefficients) - 1 , off = exp(-wtp_lm_14$coefficients) - 1)
 
-write.csv(coef_lm_14, "output/wtp_results_14.csv", row.names = FALSE)
+write.csv(coef_lm, "output/wtp_results_14.csv", row.names = FALSE)
 
 ```
 
@@ -465,6 +491,140 @@ The coefficient on a dummy variable with a log-transformed Y variable is interpr
 Justification for using a log-log model:
 For interpretation. In economics, we are sometimes interested how a percentage change in x affects the percentage change in y. This called elasticity. We can estimate elasticity (f) by using a log-log model
 
+## Results: 
+By controlling for country in the original equation as fixed effects within our model, we are estimating the relationship between wtp and our independent variables having adjusted for systematic differences in willingness to pay and our independent variables between Indonesia and Mexico.
+
+$$ log(WTP) = \beta_{0} +  \beta_{1}*SOS - \beta_{2}info + \beta_{3}*ownfisher + \beta_{4}*ownindustry + \beta_{5}*owngov - \beta_{6}*log(gdp prop) + \beta_{7}*log(years fishing) \\
+- \beta_{8}*log(fishing org members) + \beta_{9}*eduprimary + \beta_{10}*edusecondary + \beta_{11}*eduuni + \beta_{12}*eduvocational \\ $$
+
+$$  = 1.67 +  0.17*SOS - 0.05*info + 0.13*ownfisher + 0.06*ownindustry + 0.03*owngov - 0.015*log(gdp prop) \\ + 0.037*log(years fishing) - 0.029*log(fishing org members) + 0.15*eduprimary + \\ 0.24*edusecondary + 0.41*eduuni + 0.35*eduvocational $$
+
+The unconditional expected geometric mean of our willingness to pay variable is $$e^{1.67596} = \$ 5.34.$$  ---- **IS THIS RIGHT? Do I need to subtract by something since we did that in the rcode for the model since we couldnt take the log of a negative number??**
+
+**Categorical Predictors (Approximate Interpretation):**
+
+ - Predicted WTP is approximately 17% higher with an SOS button, than not with one. 
+ 
+ - Predicted WTP is approximately 5% lower with non anonymity, than with anonymity.
+ 
+ - Predicted WTP is approximately 13% higher when fishers own the data, than when it is publicly available.
+ 
+ - Predicted WTP is approximately 6.5% higher when industry owns the data, than when it is publicly available. 
+ 
+ - Predicted WTP is approximately 3.5% higher when government owns the data, than when it is publicly available.
+ 
+ - Predicted WTP is approximately 15% higher when respondent had primary education, than no formal education.
+ 
+ - Predicted WTP is approximately 24% higher when respondent had secondary education, than no formal education.
+ 
+ - Predicted WTP is approximately 41% higher when respondent had university education, than no formal education.
+ 
+ - Predicted WTP is approximately 35% higher when respondent had vocational education, than no formal education.
+ 
+**Categorical Predictors (Exact Interpretation):**
+I will only show the proof for one of our categorical variables, as it could get redundant otherwise. 
+
+SOS: 
+
+$$ "Turning \ SOS \ on" \ \frac{(WTP_{SOS = 1} - WTP_{SOS = 0})}{WTP_{SOS = 0}} = \frac{WTP_{SOS = 1}}{WTP_{SOS = 0}} - 1 = e^{\beta_1} - 1 = e^{0.1718} - 1 =  0.18744 $$
+ - With an SOS functionality, on average, WTP for this technology is 18.74% percent higher than not having SOS functionality, holding the rest of our variables constant.
+ 
+ $$ "Turning \ SOS \ off" \  \frac{(WTP_{SOS = 0} - WTP_{SOS = 1})}{WTP_{SOS = 1}} = \frac{WTP_{SOS = 0}}{WTP_{SOS = 1}} - 1 = e^{-\beta_1} - 1 = e^{-0.1718} - 1 =  -0.1578 $$
+ - Without an SOS functionality, on average, WTP for this technology is 15.78% less than having an SOS functionality, holding the rest of our variables constant. 
+ 
+ The rest of the exact interpretation calculations are done in the same was as above. 
+ 
+Information Access:
+
+ -  Being non-anonymous in the data, on average, WTP for this technology is 4.8% percent less than being anonymous in the data, holding the rest of our variables constant.
+  -  Being anonymous in the data, on average, WTP for this technology is 5.1% percent higher than being non-anonymous in the data, holding the rest of our variables constant.
+  
+Ownership of data: 
+
+ -  With fisher ownership of the data, on average, WTP for this technology is 14.04% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 12.31% percent less than fisher ownership of the data, holding the rest of our variables constant.
+ 
+  -  With industry ownership of the data, on average, WTP for this technology is 6.8% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 6.3% percent less than industry ownership of the data, holding the rest of our variables constant.
+ 
+   -  With government ownership of the data, on average, WTP for this technology is 3.6% percent higher than publicly available data, holding the rest of our variables constant.
+ -  With public availability of the data, on average, WTP for this technology is 3.4% percent less than government ownership of the data, holding the rest of our variables constant.
+ 
+ Education:
+ 
+ -  With primary education, on average, WTP for this technology is 16.7% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 14.3% percent less than having primary education, holding the rest of our variables constant.
+ 
+ -  With secondary education, on average, WTP for this technology is 28.2% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 22% percent less than having secondary education, holding the rest of our variables constant.
+ 
+ -  With university education, on average, WTP for this technology is 51% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 33.7% percent less than having university education, holding the rest of our variables constant.
+ 
+ -  With vocational education, on average, WTP for this technology is 41.9% percent higher than no formal education, holding the rest of our variables constant.
+ -  With no formal education, on average, WTP for this technology is 29.5% percent less than having vocational education, holding the rest of our variables constant.
+ 
+**Continuous Predictors (Exact Interpretation):**
+
+gdp_prop (proxy for income usd):
+
+ - For a one unit increase in gdp_prop, we expect to see a 1.58% decrease in WTP. 
+ 
+ years_fishing: 
+ 
+  - For a one unit increase in years_fishing, we expect to see a 3.78% increase in WTP.
+  
+fishing_org_members: 
+
+ - For a one unit increase in fishing_org_members, we expect to see a 2.92% decrease in WTP.
+ 
+ **Continuous Predictors Effects**
+
+Lets focus on the effect of our of our continuous predictor variables, years_fishing. Take two values of years_fishing, m1 and m2, and hold the other predictor variables at any fixed value. 
+
+$$ log(WTP(m_{2})) - log(WTP(m_{1})) = \beta_{7}*[log(m_{2} - m_{1})] $$
+$$ log[\frac{WTP(m_{2})}{WTP(m_{1})}] = \beta_{7}*[log(\frac{m_{2}}{m_{1}})] $$
+leading to 
+$$ \frac{WTP(m_{2})}{WTP(m_{1})} = (\frac{m_{2}}{m_{1}})^{\beta_{7}} $$
+
+This tells us that as long as the ratio of the two years_fishing stays the same, $$\frac{m_{2}}{m_{1}}$$ stays the same, the expected ratio of the outcome variable, WTP, stays the same. For example, we can say that for any 10% increase in years_fishing, the expected ratio of the WTP will be $$(1.10)^{β_{7}} = (1.10)^{0.03718} = 1.00355. $$ In other words, we expect about .355% increase in WTP when years_fishing increases by 10%. See the table below for the effect of every %increase of a continuous predictor variable by 1% on WTP. 
+
+
+
+```{r}
+percent <- seq(from = 1, to = 1.99, by = 0.01)
+beta_years_fishing <- data.frame(beta_value = rep(wtp_lm$coefficients[8], 100), beta_name = rep("years_fishing", 100))
+
+effects_years_fishing <- cbind(percent, beta_years_fishing)
+
+beta_gdp_prop <- data.frame(beta_value = rep(wtp_lm$coefficients[7], 100), beta_name = rep("gdp_prop", 100))
+effects_gdp_prop <- cbind(percent, beta_gdp_prop)
+
+beta_fishing_org_members <- data.frame(beta_value = rep(wtp_lm$coefficients[9], 100), beta_name = rep("fishing_org_members", 100))
+effects_fishing_org_members <- cbind(percent, beta_fishing_org_members)
+
+actual_continuous_effects <- rbind(effects_years_fishing, effects_gdp_prop, effects_fishing_org_members) %>% mutate(increase_decrease_WTP = ifelse(
+  beta_value < 0, -1*(1 - (percent)^beta_value), (percent)^beta_value - 1))
+```
+
+```{r}
+datatable(actual_continuous_effects)
+```
+
+
+
+
+```{r, include = FALSE}
+fishing_income<-read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
+  select(survey_id, income_fishing) %>% 
+  right_join(bind_log_final) %>% 
+  na.omit() %>% 
+  filter(income_fishing!=0)
+
+wtp_lm_x <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own + log(gdp_prop) + log(years_fishing) + log(income_fishing)  + education + factor(country), data = fishing_income)
+
+summary(wtp_lm_x)
+```
 
 Notes and relevant links:
 
