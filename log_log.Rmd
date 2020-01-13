@@ -339,7 +339,7 @@ variables_log<-variables %>%
   left_join(variables_fishincome) %>% 
   left_join(variables_rankone)
 
-write.csv(variables_log, "int/log_log_variables.csv", row.names = FALSE)
+#write.csv(variables_log, "int/log_log_variables.csv", row.names = FALSE)
 
 ```
 
@@ -489,7 +489,7 @@ coef_lm_16 <- as.data.frame(wtp_lm_16$coefficients) %>%
   tibble::rownames_to_column("Beta") %>%
   mutate(on = exp(wtp_lm_16$coefficients) - 1 , off = exp(-wtp_lm_16$coefficients) - 1)
 
-write.csv(coef_lm_16, "output/wtp_results_16.csv", row.names = FALSE)
+#write.csv(coef_lm_16, "output/wtp_results_16.csv", row.names = FALSE)
 
 ```
 
@@ -562,7 +562,7 @@ row.names(predict_16) <- rownames
 
 three_models_predictions <- cbind(lm_14 = predict_14, lm_15 = predict_15, lm_16 = predict_16)
 
-write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
+#write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
 ```
 
 
