@@ -32,60 +32,60 @@ library(WDI)
 # BLR including WTP
 ```{r}
 #data formatting 
-choice<- read.csv("raw/version_to_package.csv", stringsAsFactors = TRUE) %>% 
+choice <- read.csv("raw/version_to_package.csv", stringsAsFactors = TRUE) %>% 
   rename(survey_version = 1)
 
-packages<- read.csv("raw/packages.csv", stringsAsFactors = TRUE)  %>% 
+packages <- read.csv("raw/packages.csv", stringsAsFactors = TRUE)  %>% 
   rename(package = 1)
 
-choice_package<-choice %>% 
+choice_package <- choice %>% 
   left_join(packages) %>% 
-  mutate(choice = ifelse(package <=16,1,2))
+  mutate(choice = ifelse(package <= 16,1,2))
 
 
 survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
   select(survey_id, survey_version, country, choice, package_nopackage, starts_with("wtp"), starts_with("wtr"))
 
-pack_yes<- survey %>% 
+pack_yes <- survey %>% 
   filter(package_nopackage == 1) %>% 
-  mutate(wtp = ifelse(wtp_4== "y", 4,
-                      ifelse(wtp_4== "n", 3,
-                             ifelse(wtp_3=="n", 2,
-                                    ifelse(wtp_2=="n", 1, 0))))) %>% 
+  mutate(wtp = ifelse(wtp_4 == "y", 4,
+                      ifelse(wtp_4 == "n", 3,
+                             ifelse(wtp_3 =="n", 2,
+                                    ifelse(wtp_2 =="n", 1, 0))))) %>% 
   select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
   left_join(choice_package) %>% 
-  mutate(choice=1)
+  mutate(choice = 1)
 
 pack_no <- survey %>% 
   filter(package_nopackage == 0) %>% 
-  mutate(wtp = ifelse(wtr_4== "y", -4,
-                      ifelse(wtr_4== "n", -5,
-                             ifelse(wtr_3=="y", -3,
-                                    ifelse(wtr_2=="y", -2, -1))))) %>% 
+  mutate(wtp = ifelse(wtr_4 == "y", -4,
+                      ifelse(wtr_4 == "n", -5,
+                             ifelse(wtr_3 =="y", -3,
+                                    ifelse(wtr_2 =="y", -2, -1))))) %>% 
   select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
   left_join(choice_package) %>% 
-  mutate(choice=1)
+  mutate(choice = 1)
 
-pack_no_no<-pack_no %>% 
-  mutate(wtp=(wtp+1)) %>% 
+pack_no_no <- pack_no %>% 
+  mutate(wtp = (wtp + 1)) %>% 
   mutate(choice = 0)
 
-pack_yes_no<-pack_yes %>% 
-  filter(wtp!=4) %>% 
-  mutate(wtp=(wtp+1)) %>% 
+pack_yes_no <- pack_yes %>% 
+  filter(wtp != 4) %>% 
+  mutate(wtp = (wtp + 1)) %>% 
   mutate(choice = 0)
 
-bind_pre<-rbind(pack_no,pack_yes, pack_no_no, pack_yes_no) %>% 
-  filter(wtp!=-5)
+bind_pre <- rbind(pack_no,pack_yes, pack_no_no, pack_yes_no) %>% 
+  filter(wtp != -5)
 
-other_pack<-bind_pre %>% 
+other_pack <- bind_pre %>% 
   select(survey_id, survey_version, country,  choice) %>%
   mutate(choice = ifelse(choice == 1,2,1)) %>% 
   left_join(choice_package) %>% 
-  mutate(choice=0) %>% 
-  mutate(wtp=0)
+  mutate(choice = 0) %>% 
+  mutate(wtp = 0)
 
-bind<-rbind(bind_pre, other_pack) 
+bind <- rbind(bind_pre, other_pack) 
 
 ```
 
@@ -105,8 +105,8 @@ wtp_4 = $7.75
 
 ```{r}
 
-bind_ind<-bind %>% 
-  filter(country=="IND") %>% 
+bind_ind <- bind %>% 
+  filter(country =="IND") %>% 
   mutate(wtp = ifelse(wtp == -4, -7.12,
                        ifelse(wtp == -3, -5.35, 
                               ifelse(wtp == -2, -3.56,
@@ -116,8 +116,8 @@ bind_ind<-bind %>%
                                                            ifelse(wtp == 2, 3.56, 
                                                                   ifelse(wtp == 3, 5.35, 7.12)))))))))
 
-bind_mex<-bind %>% 
-  filter(country=="MEX") %>% 
+bind_mex <- bind %>% 
+  filter(country =="MEX") %>% 
   mutate(wtp = ifelse(wtp == -4, -7.75,
                        ifelse(wtp == -3, -5.17, 
                               ifelse(wtp == -2, -3.62,
@@ -127,26 +127,28 @@ bind_mex<-bind %>%
                                                            ifelse(wtp == 2, 3.62, 
                                                                   ifelse(wtp == 3, 5.17, 7.75)))))))))
 
-bind_wtp<-rbind(bind_mex,bind_ind) %>% 
-  mutate(own=as.factor(own))
+bind_wtp <- rbind(bind_mex,bind_ind) %>% 
+  mutate(own = as.factor(own))
 
 
 #making the df to be used for log-log
-bind_log<-bind_wtp %>% 
+bind_log <- bind_wtp %>% 
   filter(choice == 1) %>% 
   mutate(sos = ifelse(sos==1,0,1)) %>% 
   mutate(info = ifelse(info == 2,0,1)) %>% 
-  mutate(own=as.factor(own)) 
+  mutate(own = as.factor(own)) 
+
+write.csv(bind_log, "int/log_log_wtp.csv", row.names = FALSE)
 
 ```
 
 
 ```{r}
-wtp_distribution <-bind %>% 
+wtp_distribution <- bind %>% 
   filter(choice == 1) %>% 
   select(wtp) %>%
   mutate(wtp_p4 = wtp + 4) %>% 
-  mutate(log_wtp= log(wtp_p4)) %>% 
+  mutate(log_wtp = log(wtp_p4)) %>% 
   gather(variable, value) 
   
 wtp_distribution %>% 
@@ -164,7 +166,7 @@ wtp_distribution %>%
 ```{r}
 variables <- read_csv("int/variables.csv")
 
-variables_log<-variables %>% 
+variables_log <- variables %>% 
   select(survey_id, country, community, income, years_fishing, age, education, boat_status)
 ```
 
@@ -179,12 +181,12 @@ income_summary <-
             "max" = ~ max(.data$income),
             "mean (sd)" = ~ qwraps2::mean_sd(.data$income)))
 
-income_na<-variables %>% 
+income_na <- variables %>% 
   select(community, income) %>% 
   na.omit() %>% 
   mutate(community = as.factor(community))
   
-by_com<-summary_table(dplyr::group_by(income_na, community), income_summary)
+by_com <- summary_table(dplyr::group_by(income_na, community), income_summary)
 kable(by_com)
 
 #HUGE distribution of income in IND, especially in WKB (10^7 difference) min is a single digit number, which does not make sense for Indonesia (Annual income for lowest income would be $0.0043) 
@@ -194,24 +196,24 @@ kable(by_com)
 #0.000071 USD / 1 Indonesian Rupiah 
 #0.052 USD / 1 Medican Peso
 
-income_fix<-variables %>% 
+income_fix <- variables %>% 
   select(survey_id, country, community, income) %>%
-  mutate(income = ifelse(country == "IND" & income<= 10, income*1000000, income)) %>% 
+  mutate(income = ifelse(country == "IND" & income <= 10, income*1000000, income)) %>% 
   mutate(currency = ifelse(country=="MEX", 0.052, 0.000071)) %>% 
   mutate(income_usd = currency*income*12) %>% 
   mutate(income_usd = round(income_usd, digits = 2))
 
-usd_com_mean<-income_fix %>% 
+usd_com_mean <-income_fix %>% 
   group_by(community) %>% 
   summarise(mean_income = mean(income_usd, na.rm = TRUE))
 
 #adding in GDP per Capita conversion 
-gdp_raw<- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018, end = 2018) %>% 
-  mutate(country=ifelse(country=="Mexico", "MEX", "IND")) %>% 
+gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018, end = 2018) %>% 
+  mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>% 
   rename(c = 1) %>% 
   select(-c, -year)
 
-variables_income_fix<-income_fix %>% 
+variables_income_fix <- income_fix %>% 
   left_join(usd_com_mean) %>%
   mutate(gf_income = ifelse(is.na(income), 1, 0)) %>% 
   mutate(income_usd = ifelse(is.na(income), mean_income, income_usd)) %>% 
@@ -235,7 +237,7 @@ variables_fishincome <- variables %>%
   left_join(fishincome) %>%
   mutate(gf_fishincome = ifelse(is.na(income_fishing), 1, 0)) %>% 
   mutate(income_fishing = ifelse(is.na(income_fishing), mean_fishincome, 
-                                 ifelse(income_fishing ==0, mean_fishincome, income_fishing))) %>% 
+                                 ifelse(income_fishing == 0, mean_fishincome, income_fishing))) %>% 
   select(survey_id, country, community, income_fishing)
 
 ```
@@ -243,9 +245,9 @@ variables_fishincome <- variables %>%
 
 ```{r}
 #education
-variables_edu<-variables %>% 
+variables_edu <- variables %>% 
   select(survey_id, country, community, education) %>%  
-  mutate(education=as.character(education)) %>% 
+  mutate(education = as.character(education)) %>% 
   mutate(education = ifelse(education == "other", "secondary", education)) %>%
   mutate(education = case_when(
     education == "no_formal" ~ "no_formal",
@@ -337,11 +339,17 @@ variables_log<-variables %>%
   left_join(variables_fishincome) %>% 
   left_join(variables_rankone)
 
+write.csv(variables_log, "int/log_log_variables.csv", row.names = FALSE)
+
 ```
 
 
 
 ```{r}
+#variables_log <- read_csv("int/log_log_variables.csv")
+#bind_log <- read_csv("int/log_log_wtp.csv")
+
+
 bind_log_final <- bind_log %>%
   left_join(variables_log) %>%
   within(own <- relevel(own, ref = 4)) %>%
@@ -366,53 +374,64 @@ eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
 ```{r}
 ## Traditional linear regression:
 basic_wtp_lm <- lm(wtp  ~ sos + info + own  + fishtech + factor(country) + rank_one + gdp_prop, data = bind_log_final)
-
-summary(basic_wtp_lm)
+summary(basic_wtp_lm, cluster = c("community"))
 
 #AIC score is 916.8084, which is 800+ higher than other models. So no to the linear model
 
 ## Test log-log models:
 wtp_lm <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + factor(country), data = bind_log_final)
-
-summary(wtp_lm)
+summary(wtp_lm, cluster = c("community"))
 autoplot(wtp_lm, which = 1:6, ncol = 3, label.size = 3)
 
 wtp_lm_1 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(years_fishing) + education + factor(country), data = bind_log_final)
-summary(wtp_lm_1)
+summary(wtp_lm_1, cluster = "community")
 
 wtp_lm_2 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(boat_length_m) + education + factor(country), data = bind_log_final)
-summary(wtp_lm_2)
+summary(wtp_lm_2, cluster = "community")
 
 wtp_lm_3 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(boat_length_m) + education + fishtech + factor(country), data = bind_log_final) 
-summary(wtp_lm_3)
+summary(wtp_lm_3, cluster = "community")
 
 wtp_lm_4 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + education + fishtech + factor(country), data = bind_log_final) 
-summary(wtp_lm_4)
+summary(wtp_lm_4, cluster = "community")
 
 wtp_lm_5 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(years_fishing) + education + fishtech + factor(country), data = bind_log_final)
 summary(wtp_lm_5, cluster = c("community"))
 
 wtp_lm_6 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + log(years_fishing) + education + fishtech + factor(country), data = bind_log_final) 
+summary(wtp_lm_6, cluster = "community")
 
 wtp_lm_7 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + education + fishtech + factor(country), data = bind_log_final) 
+summary(wtp_lm_7, cluster = "community")
 
 wtp_lm_8 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country), data = bind_log_final) 
+summary(wtp_lm_8, cluster = "community")
 
 wtp_lm_9 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country) + boat_own, data = bind_log_final) 
+summary(wtp_lm_9, cluster = "community")
 
 wtp_lm_10 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + log(gdp_prop) + fishtech + factor(country) + fishing_organization, data = bind_log_final) 
+summary(wtp_lm_10, cluster = "community")
 
 wtp_lm_11 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + log(gdp_prop) + log(income_fishing), data = bind_log_final) 
+summary(wtp_lm_11, cluster = "community")
 
 wtp_lm_12 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + rank_one + log(gdp_prop), data = bind_log_final) 
+summary(wtp_lm_12, cluster = "community")
 
 wtp_lm_13 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + factor(country) + rank_one + log(gdp_prop) + education, data = bind_log_final) 
+summary(wtp_lm_13, cluster = "community")
 
-wtp_lm_14 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech  + rank_one + education, data = bind_log_final) 
+wtp_lm_14 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech  + factor(country) + rank_one + education, data = bind_log_final) 
+summary(wtp_lm_14, cluster = "community")
 
 wtp_lm_15 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + rank_one + education, data = bind_log_final) 
+summary(wtp_lm_15, cluster = "community")
 
-AIC(basic_wtp_lm, wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, wtp_lm_13, wtp_lm_14, wtp_lm_15) ## take the lowest one...  
+wtp_lm_16 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech  + rank_one + log(gdp_prop) + education, data = bind_log_final) 
+summary(wtp_lm_16, cluster = "community")
+
+AIC(basic_wtp_lm, wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, wtp_lm_13, wtp_lm_14, wtp_lm_15, wtp_lm_16) ## take the lowest one...  we will look at the best 3... 14, 15, 16
 
 
 ######## Random Hypotheses ########
@@ -432,10 +451,12 @@ ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_p
 
 Take a look at summary output (clustered on community) for our 3 best models: 
 ```{r}
-summary(wtp_lm_14)
+
 summary(wtp_lm_14, cluster = c("community"))
 
 summary(wtp_lm_15, cluster = c("community"))
+
+summary(wtp_lm_16, cluster = c("community"))
 
 ```
 
@@ -443,7 +464,13 @@ summary(wtp_lm_15, cluster = c("community"))
 
 ```{r}
 ## Predict values for our best models
-predict_lm12<-cbind(bind_log_final, fitted = fitted(wtp_lm_12)) %>% 
+predict_lm14 <- cbind(bind_log_final, fitted = fitted(wtp_lm_14)) %>% 
+  mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
+
+predict_lm15 <- cbind(bind_log_final, fitted = fitted(wtp_lm_15)) %>% 
+  mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
+
+predict_lm16 <- cbind(bind_log_final, fitted = fitted(wtp_lm_16)) %>% 
   mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
 ```
 
@@ -454,9 +481,88 @@ coef_lm_14 <- as.data.frame(wtp_lm_14$coefficients) %>%
   tibble::rownames_to_column("Beta") %>%
   mutate(on = exp(wtp_lm_14$coefficients) - 1 , off = exp(-wtp_lm_14$coefficients) - 1)
 
-write.csv(coef_lm_14, "output/wtp_results_14.csv", row.names = FALSE)
+coef_lm_15 <- as.data.frame(wtp_lm_15$coefficients) %>%
+  tibble::rownames_to_column("Beta") %>%
+  mutate(on = exp(wtp_lm_15$coefficients) - 1 , off = exp(-wtp_lm_15$coefficients) - 1)
+
+coef_lm_16 <- as.data.frame(wtp_lm_16$coefficients) %>%
+  tibble::rownames_to_column("Beta") %>%
+  mutate(on = exp(wtp_lm_16$coefficients) - 1 , off = exp(-wtp_lm_16$coefficients) - 1)
+
+write.csv(coef_lm_16, "output/wtp_results_16.csv", row.names = FALSE)
 
 ```
+
+Run the best technology/best characteristics (BTBC), best tech/worst characteristics (BTWC), worst tech/best characteristics (WTBC), and worst tech/worst characteristics (WTWC) for models 14, 15, and 16.
+```{r}
+#### Model 14
+# best tech: sos = 1, info = 0, own = 1
+# worst tech = sos = 0, info = 1, own = 4
+# best characteristics: fishtech = 1, country = "IND", rankone = "corruption", education = "higher"
+# worst characteristics: fishtech = 0, country = MEX, rankone = weather, education = noformal
+rownames <- c("BTBC", "BTWC", "WTBC", "WTWC")
+
+BTBC_14 <- data.frame(sos = 1, info =  0, own = as.factor(1), fishtech = 1, country = "IND", rank_one = "corruption", education = "higher")
+
+BTWC_14 <- data.frame( sos = 1, info =  0, own = as.factor(1), fishtech = 0, country = "MEX", rank_one = "weather", education = "no_formal")
+
+WTBC_14 <- data.frame( sos = 0, info =  1, own = as.factor(4), fishtech = 1, country = "IND", rank_one = "corruption", education = "higher")
+
+WTWC_14 <- data.frame( sos = 0, info =  1, own = as.factor(4), fishtech = 0, country = "MEX", rank_one = "weather", education = "no_formal")
+
+newdata_14 <- rbind(BTBC_14, BTWC_14, WTBC_14, WTWC_14)
+
+predict_14 <- predict(wtp_lm_14, newdata = newdata_14)
+predict_14 <- data.frame((exp(predict_14) - 1 + wtpmin))
+row.names(predict_14) <- rownames
+#### Model 15
+# best tech: sos = 1, info = 0, own = 1
+# worst tech = sos = 0, info = 1, own = 4
+# best characteristics: fishtech = 1, rankone = "corruption", education = "higher"
+# worst characteristics: fishtech = 0, rankone = weather, education = noformal
+
+
+BTBC_15 <- data.frame(sos = 1, info =  0, own = as.factor(1), fishtech = 1,  rank_one = "corruption", education = "higher")
+
+BTWC_15 <- data.frame( sos = 1, info =  0, own = as.factor(1), fishtech = 0, rank_one = "weather", education = "no_formal")
+
+WTBC_15 <- data.frame( sos = 0, info =  1, own = as.factor(4), fishtech = 1, rank_one = "corruption", education = "higher")
+
+WTWC_15 <- data.frame( sos = 0, info =  1, own = as.factor(4), fishtech = 0, rank_one = "weather", education = "no_formal")
+
+newdata_15 <- rbind(BTBC_15, BTWC_15, WTBC_15, WTWC_15)
+
+predict_15 <- predict(wtp_lm_15, newdata = newdata_15)
+predict_15 <- data.frame((exp(predict_15) - 1 + wtpmin))
+row.names(predict_15) <- rownames
+
+#### Model 15
+# best tech: sos = 1, info = 0, own = 1
+# worst tech = sos = 0, info = 1, own = 4
+# best characteristics: fishtech = 1, rankone = "corruption", education = "higher"
+# worst characteristics: fishtech = 0, rankone = weather, education = noformal
+mingdpprop <- min(bind_log_final$gdp_prop)
+maxgdpprop <- max(bind_log_final$gdp_prop)
+
+BTBC_16 <- data.frame(sos = 1, info =  0, own = as.factor(1), fishtech = 1,  rank_one = "corruption", gdp_prop = mingdpprop, education = "higher")
+
+BTWC_16 <- data.frame( sos = 1, info =  0, own = as.factor(1), fishtech = 0, rank_one = "weather", gdp_prop = maxgdpprop, education = "no_formal")
+
+WTBC_16 <- data.frame( sos = 0, info =  1, own = as.factor(4), fishtech = 1, rank_one = "corruption", gdp_prop = mingdpprop, education = "higher")
+
+WTWC_16 <- data.frame( sos = 0, info =  1, own = as.factor(4), fishtech = 0, rank_one = "weather",gdp_prop = maxgdpprop, education = "no_formal")
+
+newdata_16 <- rbind(BTBC_16, BTWC_16, WTBC_16, WTWC_16)
+
+
+predict_16 <- predict(wtp_lm_16, newdata = newdata_16)
+predict_16 <- data.frame((exp(predict_16) - 1 + wtpmin))
+# predict_15 <- cbind(Row.Names = rownames(rownames), predict_15)
+row.names(predict_16) <- rownames
+
+three_models_predictions <- cbind(lm_14 = predict_14, lm_15 = predict_15, lm_16 = predict_16)
+```
+
 
 
 How to interpret our coefficients:
