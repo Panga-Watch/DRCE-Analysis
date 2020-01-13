@@ -561,6 +561,8 @@ predict_16 <- data.frame((exp(predict_16) - 1 + wtpmin))
 row.names(predict_16) <- rownames
 
 three_models_predictions <- cbind(lm_14 = predict_14, lm_15 = predict_15, lm_16 = predict_16)
+
+write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
 ```
 
 
