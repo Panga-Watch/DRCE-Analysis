@@ -565,6 +565,91 @@ three_models_predictions <- cbind(lm_14 = predict_14, lm_15 = predict_15, lm_16 
 #write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
 ```
 
+## Run simulations
+
+For each of the characteristic combinations presented, we will run the model for all 16 packages. For example, simulation 1 (fishtech == 1, rankone == "weather", education == "formal"), will be run 16 different times (one for each package). 
+
+Simulation 1; most common characteristics from our sample: 
+```{r}
+## lm_15 run sim 1
+sim_1_chars <- data.frame(fishtech = 1, rank_one = "weather", education = "formal")
+
+packages_1 <- packages %>%
+  filter(package <= 16)
+packages_2 <- packages %>%
+  filter(package >16)
+
+packages_join <- inner_join(packages_1, packages_2, by = c("info", "sos", "own")) %>%
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
+  select(-package.y) %>%
+  mutate(own = as.factor(own))
+
+sim_1_data <- merge(packages_join, sim_1_chars) %>%
+  select(-package.x)
+
+sim_1_predict <- predict(wtp_lm_15, newdata = sim_1_data)
+sim_1_predict_actual <- data.frame(sim_1_data, predict_wtp = (exp(sim_1_predict) - 1 + wtpmin)) %>%
+  mutate(simulation = 1)
+
+```
+
+Simulation 2; Most preferred characteristics to maximize WTP from our model:
+```{r}
+## lm_15 run sim 2
+sim_2_chars <- data.frame(fishtech = 1, rank_one = "corruption", education = "higher")
+sim_2_data <- merge(packages_join, sim_2_chars) %>%
+  select(-package.x)
+
+sim_2_predict <- predict(wtp_lm_15, newdata = sim_2_data)
+sim_2_predict_actual <- data.frame(sim_2_data, predict_wtp = (exp(sim_2_predict) - 1 + wtpmin))%>%
+  mutate(simulation = 2)
+```
+
+Simulation 3; Characteristics most commonly found in Indonesia from our sample:
+```{r}
+ind_chars <- bind_log_final %>%
+  filter(country == "IND")
+ind_fishtech <- group_by(ind_chars, fishtech) %>%
+  summarise(length(fishtech)) ## 38 have exposure... meaning most common is to not have exposure. Plug fishtech = 0 into model.
+ind_rankone <- group_by(ind_chars, rank_one) %>%
+  summarise(length(rank_one)) ## weather biggest perceived problem in IND... rank_one = "weather"
+ind_edu <- group_by(ind_chars, education) %>%
+  summarise(length(education)) ## formal is most represented
+
+sim_3_chars <- data.frame(fishtech = 0, rank_one = "weather", education = "formal")
+sim_3_data <- merge(packages_join, sim_3_chars) %>%
+  select(-package.x)
+
+sim_3_predict <- predict(wtp_lm_15, newdata = sim_3_data)
+sim_3_predict_actual <- data.frame(sim_3_data, predict_wtp = (exp(sim_3_predict) - 1 + wtpmin)) %>%
+  mutate(simulation = 3)
+```
+
+Simulation 4; characteristics most commonly found in Mexico from our sample: 
+```{r}
+mex_chars <- bind_log_final %>%
+  filter(country == "MEX")
+mex_fishtech <- group_by(mex_chars, fishtech) %>%
+  summarise(length(fishtech)) ## They all have exposure.. meaning most common is to not have exposure. Plug fishtech = 1 into model.
+mex_rankone <- group_by(mex_chars, rank_one) %>%
+  summarise(length(rank_one)) ## pollution biggest perceived problem in IND... rank_one = "pollution"
+mex_edu <- group_by(mex_chars, education) %>%
+  summarise(length(education)) ## formal is most represented
+
+sim_4_chars <- data.frame(fishtech = 1, rank_one = "pollution", education = "formal")
+sim_4_data <- merge(packages_join, sim_4_chars) %>%
+  select(-package.x)
+
+sim_4_predict <- predict(wtp_lm_15, newdata = sim_4_data)
+sim_4_predict_actual <- data.frame(sim_4_data, predict_wtp = (exp(sim_4_predict) - 1 + wtpmin)) %>%
+  mutate(simulation = 4)
+
+simulations_lm_15 <- rbind(sim_1_predict_actual, sim_2_predict_actual, sim_3_predict_actual, sim_4_predict_actual)
+
+#write.csv(simulations_lm_15, "output/simulations_lm_15.csv", row.names = FALSE)
+```
+
+
 
 
 How to interpret our coefficients:
@@ -589,5 +674,8 @@ By controlling for female in the original equation, we are estimating the relati
 Fixed effects (in the context of this page) are just a fancy extension of the idea of controlling for a categorical variable.
 
 As a presentation note, people often do not present the actual fixed effects estimates in their results. They often just note that fixed effects were included, but don’t present the actual numbers because they are not typically interpreted.
+
+
+
 
 
