@@ -285,9 +285,13 @@ variables_members <- variables %>%
 variables_fishtech <- variables %>%
     select(survey_id, country, community, starts_with("fishtech")) %>%
   mutate(fishtech = ifelse(fishtech_none == 1, 0, 1),
-         fishtech = ifelse(fishtech_vhf == 1, 1, fishtech),
          fishtech = ifelse(is.na(fishtech_none), 0, fishtech)) %>%
+        mutate(fishtech = ifelse(fishtech_vhf == 1 & fishtech == 0, 1, fishtech),
+               fishtech = ifelse(is.na(fishtech_vhf), 0 , fishtech)) %>%
   select(survey_id, country, community, fishtech)
+
+
+#new <- variables_fishtech %>% filter(fishtech_vhf == 1, sum(5:9) == 0)
 ```
 
 
@@ -562,7 +566,7 @@ row.names(predict_16) <- rownames
 
 three_models_predictions <- cbind(lm_14 = predict_14, lm_15 = predict_15, lm_16 = predict_16)
 
-#write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
+write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
 ```
 
 ## Run simulations for lm15
@@ -700,7 +704,7 @@ sim_2_predict_actual_lm14 <- data.frame(sim_2_data_lm14, predict_wtp = (exp(sim_
 
 simulations_lm_14 <- rbind(sim_1_predict_actual_lm14, sim_2_predict_actual_lm14)
 
-write.csv(simulations_lm_14, "output/simulations_lm_14.csv", row.names = FALSE)
+#write.csv(simulations_lm_14, "output/simulations_lm_14.csv", row.names = FALSE)
 ```
 
 ## Run simulations for lm16
@@ -781,8 +785,26 @@ sim_4_predict_actual_lm16 <- data.frame(sim_4_data_lm16, predict_wtp = (exp(sim_
 
 simulations_lm_16 <- rbind(sim_1_predict_actual_lm16, sim_2_predict_actual_lm16, sim_3_predict_actual_lm16, sim_4_predict_actual_lm16)
 
-write.csv(simulations_lm_16, "output/simulations_lm_16.csv", row.names = FALSE)
+#write.csv(simulations_lm_16, "output/simulations_lm_16.csv", row.names = FALSE)
 ```
+
+### Ultimate Simulation
+```{r}
+sos <- c(0,1)
+info <- c(0,1)
+own <- c("1", "2", "3", "4")
+fishtech <- c(0,1)
+rank_one <- c("corruption", "pollution", "weather", "iuu")
+education <- c("no_formal", "formal", "higher")
+
+simulation_data <- expand.grid(sos = sos, info = info, own = own,fishtech =  fishtech, rank_one = rank_one, education = education)
+
+simulation_all_lm15 <- data.frame(simulation_data, wtp_predict = exp(predict(wtp_lm_15, newdata = simulation_data)) - 1 + wtpmin) 
+
+## now we have a dataframe of every possible combination of our variables in lm_15 and a predicted wtp from lm_15...
+#write.csv(simulation_all_lm15, "output/lm_15_allcombo_predictions.csv")
+```
+
 
 
 How to interpret our coefficients:
