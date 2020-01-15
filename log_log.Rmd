@@ -805,6 +805,47 @@ simulation_all_lm15 <- data.frame(simulation_data, wtp_predict = exp(predict(wtp
 #write.csv(simulation_all_lm15, "output/lm_15_allcombo_predictions.csv")
 ```
 
+## Graphs of opt in per payment to fishers
+```{r}
+# read in total simulation data... all predictions of all combinations of WTP 
+simulation_all_lm15 <- read_csv("output/lm_15_allcombo_predictions.csv") %>%
+  select(-X1)
+
+## make a vector of payment values 
+dollar_values <- seq(-3, 8, by = 0.01)
+
+test_graph_df <- simulation_all_lm15 %>%
+  merge(dollar_values) %>%
+  mutate(opt_in = ifelse(wtp_predict > y, 0, 1 )) %>% ## if the wtp is greater than payment value, then they will opt out, otherwise, opt in
+  arrange(opt_in)
+
+test_group_df <- test_graph_df %>%
+  group_by(y, opt_in) %>%
+  tally() %>%
+  filter(opt_in == 1) %>% ## filter for all opt ins...
+  mutate(perc_opt_in = n/384) ##384 total scenarios
+
+## compare filtering for opt outs...
+test_group_df_opt_out <- test_graph_df %>%
+  group_by(y, opt_in) %>%
+  tally() %>%
+  filter(opt_in == 0) %>%
+  mutate(perc_opt_in = n/384)
+  
+  
+#test_graph_df$cumperc <- ifelse(test_graph_df$opt_in == 0, 0, (1:nrow(test_graph_df))/nrow(test_graph_df))
+
+#opt in graph
+ggplot(test_group_df, aes(x = y, y = perc_opt_in)) +
+  geom_point() 
+
+#opt out graph
+ggplot(test_group_df_opt_out, aes(x = y, y = perc_opt_in)) +
+  geom_point() 
+
+```
+
+
 
 
 How to interpret our coefficients:
