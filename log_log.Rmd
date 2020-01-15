@@ -811,6 +811,8 @@ simulation_all_lm15 <- data.frame(simulation_data, wtp_predict = exp(predict(wtp
 simulation_all_lm15 <- read_csv("output/lm_15_allcombo_predictions.csv") %>%
   select(-X1)
 
+sim_total <- nrow(simulation_all_lm15)
+
 ## make a vector of payment values 
 dollar_values <- seq(-3, 8, by = 0.01)
 
@@ -823,25 +825,32 @@ test_group_df <- test_graph_df %>%
   group_by(y, opt_in) %>%
   tally() %>%
   filter(opt_in == 1) %>% ## filter for all opt ins...
-  mutate(perc_opt_in = n/384) ##384 total scenarios
+  mutate(perc_opt_in = n/sim_total) ##384 total scenarios
 
 ## compare filtering for opt outs...
 test_group_df_opt_out <- test_graph_df %>%
   group_by(y, opt_in) %>%
   tally() %>%
   filter(opt_in == 0) %>%
-  mutate(perc_opt_in = n/384)
+  mutate(perc_opt_in = n/sim_total)
   
   
 #test_graph_df$cumperc <- ifelse(test_graph_df$opt_in == 0, 0, (1:nrow(test_graph_df))/nrow(test_graph_df))
 
 #opt in graph
 ggplot(test_group_df, aes(x = y, y = perc_opt_in)) +
-  geom_point() 
+  geom_point() +
+  labs(x = "Payment to Fisher ($)", y = "Percent opt in VMS Program", title = "All Technology and Demographic Combinations") +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(-3,8, 1))
+  
 
 #opt out graph
 ggplot(test_group_df_opt_out, aes(x = y, y = perc_opt_in)) +
-  geom_point() 
+  geom_point() +
+  labs(x = "Payment to Fisher", y = "Percent opt out VMS Program", title = "All Technology and Demographic Combinations") +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(-3,8, 1))
 
 ```
 
