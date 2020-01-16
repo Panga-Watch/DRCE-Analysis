@@ -69,5 +69,25 @@ length(psc$education[psc$education == "higher"])
 length(psc$rank_one[psc$rank_one == "iuu"])
 
 #write.csv(psc, "hypo_village_data/PuertoSanCarlos.csv", row.names = FALSE)
+
+sos <- c(0,1)
+info <- c(0,1)
+own <- c("1", "2", "3", "4")
+
+packages <- expand.grid(sos = sos,info = info, own= own)
+
+psc_all_packages <- merge(psc, packages)
+
+#write.csv(psc_all_packages, "hypo_village_data/PuertoSanCarlos.csv", row.names = FALSE)
+
+new <- merge(psc,packages)
+new_filter <- new %>%
+  filter(sos == 1, info == 0, own == 1)
+
+length(new_filter$education[new_filter$education == "no_formal"]) #612
+length(psc$rank_one[psc$rank_one == "iuu"]) #1800
+length(psc$fish_tech[psc$fish_tech == 1]) #1656
+## IT WORKS!! 
+
 ```
 
