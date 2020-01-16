@@ -43,9 +43,7 @@ Statistics:
 # psc_filter <- total_sim_data %>%
 #   filter(rank_one == "iuu", sos == 1, info == 0, own == 1)
 
-best_tech <- data.frame(sos = c(1), info = c(0), own = c(1))
-
-best_tech_psc <- rep(best_tech, 1800)
+set.seed(6969)
 
 fishtech <- c(0,1)
 psc_prob_fishtech <- c(0.08, 0.92)
@@ -53,9 +51,9 @@ rank_one <- c("corruption", "pollution", "weather", "iuu")
 education <- c("no_formal", "formal", "higher")
 psc_prob_edu <- c(0.34, 0.63, 0.03)
 
-psc <- data.frame(best_tech_psc,
-                  fish_tech = sample(rep(fishtech, round(nrow(best_tech_psc)*psc_prob_fishtech))),
-                  education = sample(rep(education, round(nrow(best_tech_psc)*psc_prob_edu))),
+psc <- data.frame(
+                  fish_tech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
+                  education = sample(rep(education, round(1800*psc_prob_edu))),
                   rank_one = "iuu"
                   )
 
@@ -67,5 +65,9 @@ length(psc$fish_tech[psc$fish_tech ==1])
 length(psc$education[psc$education == "no_formal"])
 length(psc$education[psc$education == "formal"])
 length(psc$education[psc$education == "higher"])
+
+length(psc$rank_one[psc$rank_one == "iuu"])
+
+#write.csv(psc, "hypo_village_data/PuertoSanCarlos.csv", row.names = FALSE)
 ```
 
