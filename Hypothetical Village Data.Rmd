@@ -1,0 +1,71 @@
+---
+title: "Hypothetical Village Data"
+author: "Gage Clawson"
+date: "1/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(mefa)
+
+total_sim_data <- read_csv("output/lm_15_allcombo_predictions.csv") %>%
+  select(-X1)
+```
+
+Puerto San Carlos; Based off of Jumbo Squid Fishery.
+Paper: [Socioeconomic Diagnosis of the 2010 Jumbo Squid Artisanal Fishery near Magdalena Bay, Baja California Sur, Mexico](http://www.scielo.org.mx/scielo.php?script=sci_arttext&pid=S0188-88972014000100002)
+
+Statistics: 
+ - Population 5538 (2010 census data)
+ - Artisanal Fisheries employ about 50% of the working population. 
+ - 1800 fishing permits for jumbo squid 
+   - "almost all of our respondents engage in other fisheries when jumbo squid are not present"
+   - Assume that there are 1800 fishers in Puerto San Carlos. 
+ - Average age is 34 years with a range of 18 to 78. 
+ - No formal education (34%); formal (middle or high school; 30% + 33% = 63%); classify the remaining as higher (3%)
+ - average of $11,090 Mexican Pesos each month (+/- $1,000 USD per month)
+ - Assume biggest problem for the fishery is IUU. 
+ - 8% did not have fishing communication technology on their boat. 
+
+```{r}
+
+# fishtech_yes <- 1800*0.92
+# fishtech_no <- 1800*0.08
+# 
+# no_formal_edu <- 1800*0.34
+# formal_edu <- 1800*0.63
+# higher_edu <- 1800*0.03
+# 
+# iuu <- 1800
+# 
+# psc_filter <- total_sim_data %>%
+#   filter(rank_one == "iuu", sos == 1, info == 0, own == 1)
+
+best_tech <- data.frame(sos = c(1), info = c(0), own = c(1))
+
+best_tech_psc <- rep(best_tech, 1800)
+
+fishtech <- c(0,1)
+psc_prob_fishtech <- c(0.08, 0.92)
+rank_one <- c("corruption", "pollution", "weather", "iuu")
+education <- c("no_formal", "formal", "higher")
+psc_prob_edu <- c(0.34, 0.63, 0.03)
+
+psc <- data.frame(best_tech_psc,
+                  fish_tech = sample(rep(fishtech, round(nrow(best_tech_psc)*psc_prob_fishtech))),
+                  education = sample(rep(education, round(nrow(best_tech_psc)*psc_prob_edu))),
+                  rank_one = "iuu"
+                  )
+
+
+
+length(psc$fish_tech[psc$fish_tech ==0]) # this should be 144 !!!?
+length(psc$fish_tech[psc$fish_tech ==1])
+
+length(psc$education[psc$education == "no_formal"])
+length(psc$education[psc$education == "formal"])
+length(psc$education[psc$education == "higher"])
+```
+

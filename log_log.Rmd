@@ -138,7 +138,7 @@ bind_log <- bind_wtp %>%
   mutate(info = ifelse(info == 2,0,1)) %>% 
   mutate(own = as.factor(own)) 
 
-write.csv(bind_log, "int/log_log_wtp.csv", row.names = FALSE)
+#write.csv(bind_log, "int/log_log_wtp.csv", row.names = FALSE)
 
 ```
 
@@ -462,6 +462,14 @@ summary(wtp_lm_15, cluster = c("community"))
 
 summary(wtp_lm_16, cluster = c("community"))
 
+
+# new_bind <- bind_log_final %>%
+#   mutate(rank_one = factor(rank_one)) %>%
+#   within(rank_one <- relevel(rank_one, ref = "weather"))
+# 
+# wtp_lm_15_test <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech + rank_one + education, data = new_bind) 
+# 
+# summary(wtp_lm_15_test, cluster = c("community"))
 ```
 
 
