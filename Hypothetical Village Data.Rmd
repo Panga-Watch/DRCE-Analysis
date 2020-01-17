@@ -12,6 +12,18 @@ library(mefa)
 
 total_sim_data <- read_csv("output/lm_15_allcombo_predictions.csv") %>%
   select(-X1)
+
+set.seed(6969)
+
+```
+
+```{r}
+# load necessary packages for importing the function
+library(RCurl)
+ 
+# import the function from repository
+url_robust <- "https://raw.githubusercontent.com/IsidoreBeautrelet/economictheoryblog/master/robust_summary.R"
+eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)))
 ```
 
 Puerto San Carlos; Based off of Jumbo Squid Fishery.
@@ -42,8 +54,7 @@ Statistics:
 # 
 # psc_filter <- total_sim_data %>%
 #   filter(rank_one == "iuu", sos == 1, info == 0, own == 1)
-
-set.seed(6969)
+wtpmin <- -5.35
 
 fishtech <- c(0,1)
 psc_prob_fishtech <- c(0.08, 0.92)
@@ -52,15 +63,15 @@ education <- c("no_formal", "formal", "higher")
 psc_prob_edu <- c(0.34, 0.63, 0.03)
 
 psc <- data.frame(
-                  fish_tech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
+                  fishtech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
                   education = sample(rep(education, round(1800*psc_prob_edu))),
                   rank_one = "iuu"
                   )
 
 
 
-length(psc$fish_tech[psc$fish_tech ==0]) # this should be 144 !!!?
-length(psc$fish_tech[psc$fish_tech ==1])
+length(psc$fishtech[psc$fishtech ==0]) # this should be 144 !!!?
+length(psc$fishtech[psc$fishtech ==1])
 
 length(psc$education[psc$education == "no_formal"])
 length(psc$education[psc$education == "formal"])
@@ -68,7 +79,7 @@ length(psc$education[psc$education == "higher"])
 
 length(psc$rank_one[psc$rank_one == "iuu"])
 
-#write.csv(psc, "hypo_village_data/PuertoSanCarlos.csv", row.names = FALSE)
+
 
 sos <- c(0,1)
 info <- c(0,1)
@@ -76,18 +87,34 @@ own <- c("1", "2", "3", "4")
 
 packages <- expand.grid(sos = sos,info = info, own= own)
 
+# new <- merge(psc,packages)
+# new_filter <- new %>%
+#   filter(sos == 1, info == 0, own == 1)
+# 
+# length(new_filter$education[new_filter$education == "no_formal"]) #612
+# length(psc$rank_one[psc$rank_one == "iuu"]) #1800
+# length(psc$fishtech[psc$fishtech == 1]) #1656
+# ## IT WORKS!! 
+
+
 psc_all_packages <- merge(psc, packages)
 
 #write.csv(psc_all_packages, "hypo_village_data/PuertoSanCarlos.csv", row.names = FALSE)
 
-new <- merge(psc,packages)
-new_filter <- new %>%
+## load in specific model 
+load("output/lm_15.rda")
+
+psc_predict <- data.frame(psc_all_packages, lm_15_wtp = exp(predict(wtp_lm_15, newdata = psc_all_packages)) - 1 + wtpmin) ## if you want to add predictions from another model, just tack it onto the end. Now we can filter for a technology and make graphs based off of that. 
+
+#write.csv(psc_predict, "hypo_village_data/PuertoSanCarlos_predictions.csv", row.names = FALSE)
+
+test <- psc_predict %>%
   filter(sos == 1, info == 0, own == 1)
 
-length(new_filter$education[new_filter$education == "no_formal"]) #612
-length(psc$rank_one[psc$rank_one == "iuu"]) #1800
-length(psc$fish_tech[psc$fish_tech == 1]) #1656
-## IT WORKS!! 
+test_2 <- psc_predict %>%
+  filter(sos == 1, info == 1, own == 4)
 
+test_3 <- psc_predict %>%
+  filter(sos == 0, info == 1, own == 4)
 ```
 
