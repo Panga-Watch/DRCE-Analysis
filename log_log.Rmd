@@ -465,6 +465,9 @@ summary(wtp_lm_16, cluster = c("community"))
 ## save lm_15 
 #save(wtp_lm_15, file = "output/lm_15.rda")
 
+test_wtp <- lm(wtp ~ sos + info + own, data = bind_log_final)
+summary(test_wtp, cluster = c("community"))
+
 # new_bind <- bind_log_final %>%
 #   mutate(rank_one = factor(rank_one)) %>%
 #   within(rank_one <- relevel(rank_one, ref = "weather"))
