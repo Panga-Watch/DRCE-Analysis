@@ -24,6 +24,10 @@ library(qwraps2)
 library(kableExtra)
 library(ggalt)
 library(WDI)
+library(foreign)
+library(GGally)
+library(survival)
+
 ```
 
 
@@ -361,6 +365,7 @@ bind_log_final <- bind_log %>%
 
 wtpmin<- min(bind_log_final$wtp)
 
+
 ```
 
 Include new summary function that incorporates clusters
@@ -372,6 +377,108 @@ library(RCurl)
 url_robust <- "https://raw.githubusercontent.com/IsidoreBeautrelet/economictheoryblog/master/robust_summary.R"
 eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
      envir=.GlobalEnv)
+```
+
+```{r}
+## Make it into interval data... and run models again.. without log..
+
+
+# For IND
+# 
+# wtp_1 = $2.14
+# wtp_2 = $3.56
+# wtp_3 = $5.35
+# wtp_4 = $7.12
+# 
+# For MEX 
+# 
+# wtp_1 = $2.07
+# wtp_2 = $3.62
+# wtp_3 = $5.17
+# wtp_4 = $7.75
+
+bind_interval_mex <- bind_log_final %>% 
+  filter(country == "MEX") %>%
+  mutate(wtp_upper = ifelse(wtp == -7.75, -5.17, 
+                       ifelse(wtp == -5.17, -3.62,
+                              ifelse(wtp == -3.62, -2.07,
+                                      ifelse(wtp == -2.07, 0,
+                                             ifelse(wtp == 0, 2.07, 
+                                                    ifelse(wtp == 2.07, 3.62,
+                                                           ifelse(wtp == 3.62, 5.17,
+                                                                  ifelse(wtp == 5.17, 7.75, 10))))))))) 
+                                                                        
+                                                                         
+ bind_interval_ind <- bind_log_final %>%
+       filter(country == "IND") %>%
+   mutate(wtp_upper =
+          ifelse(wtp == -7.12, -5.35,
+            ifelse(wtp == -5.35, -3.56, 
+              ifelse(wtp == -3.56, -2.14,
+                ifelse(wtp == -2.14, 0, 
+                  ifelse(wtp == 0, 2.14, 
+                    ifelse(wtp == 2.14, 3.56, 
+                      ifelse(wtp == 3.56, 5.35, 
+                        ifelse(wtp == 5.35, 7.12, 10))))))))) 
+  
+
+bind_interval_final <- rbind(bind_interval_ind, bind_interval_mex) %>%
+  rename("wtp_lower" = "wtp") 
+
+intervals <- with(bind_interval_final, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final)), type = "interval"))
+intervals
+
+int_tech <- survreg(intervals ~ sos + info + own, data = bind_interval_final, dist = "gaussian")
+summary(int_tech)
+
+int <- survreg(intervals ~ sos + info + own + education + gdp_prop, data = bind_interval_final, dist = "gaussian")
+summary(int)
+
+int_1 <- survreg(intervals ~ sos + info + own + education + years_fishing, data = bind_interval_final, dist = "gaussian")
+summary(int_1, cluster = c("community"))
+
+int_2 <- survreg(intervals ~ sos + info + own + education + boat_length_m, data = bind_interval_final, dist = "gaussian")
+summary(int_2, cluster = c("community"))
+
+int_3 <- survreg(intervals ~ sos + info + own + education + boat_length_m + fishtech, data = bind_interval_final, dist = "gaussian")
+summary(int_3, cluster = c("community"))
+
+int_4 <- survreg(intervals ~ sos + info + own + education  + fishtech + gdp_prop, data = bind_interval_final, dist = "gaussian")
+summary(int_4, cluster = c("community"))
+
+int_5 <- survreg(intervals ~ sos + info + own + education + years_fishing + fishtech, data = bind_interval_final, dist = "gaussian")
+summary(int_5, cluster = c("community"))
+
+int_6 <- survreg(intervals ~ sos + info + own + education + years_fishing + gdp_prop + fishtech, data = bind_interval_final, dist = "gaussian")
+summary(int_6, cluster = c("community"))
+
+int_7 <- survreg(intervals ~ sos + info + own + education +  fishtech, data = bind_interval_final, dist = "gaussian")
+summary(int_7, cluster = c("community"))
+
+int_8 <- survreg(intervals ~ sos + info + own + gdp_prop +  fishtech, data = bind_interval_final, dist = "gaussian")
+summary(int_8, cluster = c("community"))
+
+int_9 <- survreg(intervals ~ sos + info + own + gdp_prop +  fishtech + boat_own, data = bind_interval_final, dist = "gaussian")
+summary(int_9, cluster = c("community"))
+
+int_10 <- survreg(intervals ~ sos + info + own + gdp_prop +  fishtech + fishing_organization, data = bind_interval_final, dist = "gaussian")
+summary(int_10, cluster = c("community"))
+
+int_11 <- survreg(intervals ~ sos + info + own + gdp_prop +  fishtech + income_fishing, data = bind_interval_final, dist = "gaussian")
+summary(int_11, cluster = c("community"))
+
+int_12 <- survreg(intervals ~ sos + info + own + gdp_prop +  fishtech + rank_one, data = bind_interval_final, dist = "gaussian")
+summary(int_12, cluster = c("community"))
+
+int_13 <- survreg(intervals ~ sos + info + own +  fishtech + rank_one + fishing_organization, data = bind_interval_final, dist = "gaussian")
+summary(int_13, cluster = c("community"))
+
+int_15 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
+summary(int_15, cluster = c("community"))
+
+#save(int_15, file = "output/int_15.rda")
+
+AIC(int_tech, int, int_1, int_2, int_3, int_4, int_5, int_6, int_7, int_8, int_9, int_10, int_11, int_12, int_13, int_15)
 ```
 
 
@@ -485,10 +592,24 @@ predict_lm14 <- cbind(bind_log_final, fitted = fitted(wtp_lm_14)) %>%
   mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
 
 predict_lm15 <- cbind(bind_log_final, fitted = fitted(wtp_lm_15)) %>% 
-  mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
-
+  mutate(wtp_predict = (exp(fitted) - 1 + min(wtp))) %>%
+  select(survey_id, sos, info, own, wtp_predict, fishtech, education, rank_one)
+ 
 predict_lm16 <- cbind(bind_log_final, fitted = fitted(wtp_lm_16)) %>% 
   mutate(wtp_predict = (exp(fitted) - 1 + min(wtp)))
+
+int_15_predict <- data.frame(bind_interval_final, wtp_predict_int = int_15$linear.predictors) %>%
+  select(survey_id, sos, info, own, wtp_predict_int, fishtech, education, rank_one)
+
+## Compare log log regression and interval regression
+test <- merge(predict_lm15, int_15_predict)
+summary(test$wtp_predict) 
+ # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ # -1.234   1.250   2.236   2.309   3.463   6.117 
+
+summary(test$wtp_predict_int) 
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# -0.2632  2.7588  3.7268  3.7003  4.6572  7.0105 
 ```
 
 
@@ -813,6 +934,11 @@ education <- c("no_formal", "formal", "higher")
 simulation_data <- expand.grid(sos = sos, info = info, own = own,fishtech =  fishtech, rank_one = rank_one, education = education)
 
 simulation_all_lm15 <- data.frame(simulation_data, wtp_predict = exp(predict(wtp_lm_15, newdata = simulation_data)) - 1 + wtpmin) 
+
+simulation_all_int_15 <- data.frame(simulation_data, wtp_predict_int = predict(int_15, newdata = simulation_data))
+
+sims_log_int <- merge(simulation_all_lm15, simulation_all_int_15)
+write.csv(sims_log_int, "output/compare_log_int.csv")
 
 ## now we have a dataframe of every possible combination of our variables in lm_15 and a predicted wtp from lm_15...
 #write.csv(simulation_all_lm15, "output/lm_15_allcombo_predictions.csv")
