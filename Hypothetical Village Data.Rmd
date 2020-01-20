@@ -146,7 +146,7 @@ system.time(new_data_log <- lapply(my_data_psc, function(x) {
   
   test_graph_df <- x %>%
   merge(dollar_values) %>%
-  mutate(opt_in_log = ifelse(lm_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt out, otherwise, opt in
+  mutate(opt_in_log = ifelse(lm_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
   arrange(opt_in_log)
 
 test_group_df <- test_graph_df %>%
@@ -168,7 +168,7 @@ system.time(new_data_int <- lapply(my_data_psc, function(x) {
   
   test_graph_df <- x %>%
   merge(dollar_values) %>%
-  mutate(opt_in_int = ifelse(int_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt out, otherwise, opt in
+  mutate(opt_in_int = ifelse(int_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
   arrange(opt_in_int)
 
 test_group_df <- test_graph_df %>%
@@ -189,6 +189,14 @@ test_group_df <- test_graph_df %>%
 ```{r}
 ## plot log log acceptance rate ##
 load(file="hypo_village_data/psc_predict_log_graphdata.RData")
+
+test_log <- bind_rows(new_data_log, .id = "package") %>%
+  merge(packages)
+
+ggplot(test_log, aes(x = y, y = perc_opt_in_log)) +
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~package)
 
 ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
   geom_point() +
