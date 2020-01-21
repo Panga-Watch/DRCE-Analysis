@@ -12,6 +12,7 @@ library(mefa)
 library(survival)
 library(utils)
 library(cowplot)
+library(WDI)
 
 total_sim_data <- read_csv("output/lm_15_allcombo_predictions.csv") %>%
   select(-X1)
@@ -80,6 +81,7 @@ gdp_prop_prob$percent[[1]] <- 5
 gdp_prop_prob_new <- gdp_prop_prob %>%
   mutate(new_prob = percent/100) 
 
+
 gdp_prop_PSC <- c(gdp_prop_prob_new$gdp_prop)
 gdp_prop_prob_PSC <- c(gdp_prop_prob_new$new_prob)
 
@@ -91,8 +93,45 @@ psc <- data.frame(
                   )
 
 
+## Try it with the gamma distribution from the paper ##
 
-length(psc$fishtech[psc$fishtech ==0]) # this should be 144 !!!?
+# ## Check the distribution of gdp_prop in our sample. 
+# gdp_prop_distribution <-gdp_prop_PSC_1 %>% 
+#   select(gdp_prop) %>%
+#   gather(variable, value) 
+#   
+# gdp_prop_distribution %>% 
+#  ggplot(aes(x = value, fill = variable)) +
+#     geom_bkde() +
+#     geom_rug() ## Gamma Distribution
+# 
+# 
+# ## 11,090 Mexican Pesos/month = $590.83 
+# avg_income <- 590.83*12 #7089.96/year
+# avg_income_lower <- 590.83*12 - 1000
+# avg_income_higher <- 590.83*12 + 1000
+# lambda_hat <- avg_income/1000^2
+# alpha_hat <- avg_income^2/1000^2
+# 
+# x.gam <- rgamma(1800, rate = lambda_hat, shape = alpha_hat)
+# 
+# gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX"), start = 2018, end = 2018) %>% 
+#   mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>% 
+#   rename(c = 1) %>% 
+#   select(-c, -year)
+# 
+# gdp_prop_psc_test <- x.gam/gdp_raw$NY.GDP.PCAP.KD 
+# 
+# psc <- data.frame(
+#                   fishtech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
+#                   education = sample(rep(education, round(1800*psc_prob_edu))),
+#                   rank_one = "iuu",
+#                   gdp_prop = gdp_prop_psc_test
+#                   )
+
+
+
+length(psc$fishtech[psc$fishtech ==0]) # this should be 144
 length(psc$fishtech[psc$fishtech ==1])
 
 length(psc$education[psc$education == "no_formal"])
@@ -109,6 +148,7 @@ own <- c("1", "2", "3", "4")
 
 packages <- expand.grid(sos = sos,info = info, own= own)
 
+#### Check
 # new <- merge(psc,packages)
 # new_filter <- new %>%
 #   filter(sos == 1, info == 0, own == 1)
@@ -399,7 +439,7 @@ log_df <- rbind(group_df_opt_in, group_df_opt_out)
 }))
 beep()
 
-save(new_data_log, file="hypo_village_data/PuertoSanCarlos_gdp/psc_predict_log_graphdata_gdp.RData")
+#save(new_data_log, file="hypo_village_data/PuertoSanCarlos_gdp/psc_predict_log_graphdata_gdp.RData")
 
 ## Interval Model Graph Data ##
 system.time(new_data_int <- lapply(my_data_psc, function(x) {
@@ -521,7 +561,7 @@ for(i in unique(PSC_all_predictions$package)){
     scale_x_continuous(breaks = seq(-3,8, 1)) +
     scale_y_continuous(breaks = seq(0,1, 0.1))
 
-  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos_gdp/graphs/", m, "_", i, "_", j, ".png"))
+  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos_gdp/graphs_gamma/", m, "_", i, "_", j, ".png"))
   
     }
   }
