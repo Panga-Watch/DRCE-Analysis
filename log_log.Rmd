@@ -476,7 +476,12 @@ summary(int_13, cluster = c("community"))
 int_15 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
 summary(int_15, cluster = c("community"))
 
+int_16 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education + gdp_prop, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
+summary(int_16, cluster = c("community"))
+
 #save(int_15, file = "output/int_15.rda")
+
+save(int_16, file = "output/int_16_gdp_prop.rda")
 
 AIC(int_tech, int, int_1, int_2, int_3, int_4, int_5, int_6, int_7, int_8, int_9, int_10, int_11, int_12, int_13, int_15)
 ```
@@ -541,6 +546,7 @@ summary(wtp_lm_15, cluster = "community")
 
 wtp_lm_16 <- lm(log(wtp + 1 - min(wtp)) ~ sos + info + own  + fishtech  + rank_one + log(gdp_prop) + education, data = bind_log_final) 
 summary(wtp_lm_16, cluster = "community")
+#save(wtp_lm_16, file = "output/wtp_lm_16_gdp_prop.rda")
 
 AIC(basic_wtp_lm, wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_lm_6, wtp_lm_7, wtp_lm_8, wtp_lm_9, wtp_lm_10, wtp_lm_11, wtp_lm_12, wtp_lm_13, wtp_lm_14, wtp_lm_15, wtp_lm_16) ## take the lowest one...  we will look at the best 3... 14, 15, 16
 
