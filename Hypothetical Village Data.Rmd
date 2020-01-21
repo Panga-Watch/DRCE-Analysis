@@ -95,39 +95,40 @@ psc <- data.frame(
 
 ## Try it with the gamma distribution from the paper ##
 
-# ## Check the distribution of gdp_prop in our sample. 
-# gdp_prop_distribution <-gdp_prop_PSC_1 %>% 
-#   select(gdp_prop) %>%
-#   gather(variable, value) 
-#   
-# gdp_prop_distribution %>% 
-#  ggplot(aes(x = value, fill = variable)) +
-#     geom_bkde() +
-#     geom_rug() ## Gamma Distribution
-# 
-# 
-# ## 11,090 Mexican Pesos/month = $590.83 
-# avg_income <- 590.83*12 #7089.96/year
-# avg_income_lower <- 590.83*12 - 1000
-# avg_income_higher <- 590.83*12 + 1000
-# lambda_hat <- avg_income/1000^2
-# alpha_hat <- avg_income^2/1000^2
-# 
-# x.gam <- rgamma(1800, rate = lambda_hat, shape = alpha_hat)
-# 
-# gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX"), start = 2018, end = 2018) %>% 
-#   mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>% 
-#   rename(c = 1) %>% 
-#   select(-c, -year)
-# 
-# gdp_prop_psc_test <- x.gam/gdp_raw$NY.GDP.PCAP.KD 
-# 
-# psc <- data.frame(
-#                   fishtech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
-#                   education = sample(rep(education, round(1800*psc_prob_edu))),
-#                   rank_one = "iuu",
-#                   gdp_prop = gdp_prop_psc_test
-#                   )
+## Check the distribution of gdp_prop in our sample.
+gdp_prop_distribution <-gdp_prop_PSC_1 %>%
+  select(gdp_prop) %>%
+  gather(variable, value)
+
+gdp_prop_distribution %>%
+ ggplot(aes(x = value, fill = variable)) +
+    geom_bkde() +
+    geom_rug() ## Gamma Distribution
+
+
+## 11,090 Mexican Pesos/month = $590.83
+avg_income <- 590.83*12 #7089.96/year
+avg_income_lower <- (590.83 - 1000)*12
+avg_income_higher <- (590.83 + 1000)*12
+lambda_hat <- avg_income/12000^2
+alpha_hat <- avg_income^2/12000^2
+
+x.gam <- rgamma(1800, rate = lambda_hat, shape = alpha_hat)
+
+gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX"), start = 2018, end = 2018) %>%
+  mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>%
+  rename(c = 1) %>%
+  select(-c, -year)
+
+gdp_prop_psc_test <- x.gam/gdp_raw$NY.GDP.PCAP.KD
+hist(gdp_prop_psc_test)
+
+psc <- data.frame(
+                  fishtech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
+                  education = sample(rep(education, round(1800*psc_prob_edu))),
+                  rank_one = "iuu",
+                  gdp_prop = gdp_prop_psc_test
+                  )
 
 
 
