@@ -4,13 +4,13 @@ author: "Gage Clawson"
 date: "1/16/2020"
 output: html_document
 ---
-** NOTE: You can skip to the bottom sections, "GRAPHS!", to load in the data files and make the graphs. It will save you a lot of time instead of re running the analysis. **
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(mefa)
+library(survival)
+library(utils)
 
 total_sim_data <- read_csv("output/lm_15_allcombo_predictions.csv") %>%
   select(-X1)
@@ -101,7 +101,7 @@ packages <- expand.grid(sos = sos,info = info, own= own)
 
 psc_all_packages <- merge(psc, packages)
 
-#write.csv(psc_all_packages, "hypo_village_data/PuertoSanCarlos.csv", row.names = FALSE)
+#write.csv(psc_all_packages, "hypo_village_data/PuertoSanCarlos/PuertoSanCarlos.csv", row.names = FALSE)
 
 ## load in specific model 
 load("output/lm_15.rda")
@@ -113,8 +113,8 @@ packages <- read_csv("raw/packages.csv")  %>%
   mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own = factor(own))
 
-psc_predict_packages <- left_join(psc_predict, packages)
-#write.csv(psc_predict_packages, "hypo_village_data/PuertoSanCarlos_predictions.csv", row.names = FALSE)
+psc_predict_packages <- left_join(psc_predict, packages) 
+#write.csv(psc_predict_packages, "hypo_village_data/PuertoSanCarlos/PuertoSanCarlos_predictions.csv", row.names = FALSE)
 
 ## Make a list of data frames for each package combination. 
 my_data_psc <- list()
@@ -122,7 +122,7 @@ for (i in unique(psc_predict_packages$package)) {
     my_data_psc[[i]] <- filter(psc_predict_packages, package == i)
 }
 
-#save(my_data_psc, file="hypo_village_data/psc_predict_by_package.RData") ## save this list to read back in for graphs.
+#save(my_data_psc, file="hypo_village_data/PuertoSanCarlos/psc_predict_by_package.RData") ## save this list to read back in for graphs.
 
 
 ```
@@ -130,11 +130,11 @@ for (i in unique(psc_predict_packages$package)) {
 ```{r}
 
 # read list in to begin making data usable to graph
-load("hypo_village_data/psc_predict_by_package.RData")
+load("hypo_village_data/PuertoSanCarlos/psc_predict_by_package.RData")
 
 mean(my_data_psc[[1]]$lm_15_wtp)
 mean(my_data_psc[[1]]$int_15_wtp)
-#write.csv(psc_predict, "hypo_village_data/PuertoSanCarlos_predictions.csv", row.names = FALSE)
+#write.csv(psc_predict, "hypo_village_data/PuertoSanCarlos/PuertoSanCarlos_predictions.csv", row.names = FALSE)
 
 test <- my_data_psc[[1]] ## this is psc with package 1 predictions. Can do the same for all 16 packages.
 
@@ -144,43 +144,65 @@ dollar_values <- seq(-3, 8, by = 0.01)
 ## Log Model Graph Data ##
 system.time(new_data_log <- lapply(my_data_psc, function(x) {
   
-  test_graph_df <- x %>%
+  graph_df <- x %>%
   merge(dollar_values) %>%
   mutate(opt_in_log = ifelse(lm_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
   arrange(opt_in_log)
 
-test_group_df <- test_graph_df %>%
+group_df_opt_in <- graph_df %>%
   group_by(y, opt_in_log) %>%
   tally() %>%
   filter(opt_in_log == 1) %>% ## filter for all opt ins...
-  mutate(perc_opt_in_log = n/sim_total) %>% ##384 total scenarios
+  mutate(perc = n/sim_total,
+         opt_in_out = "Opt In") %>% ##384 total scenarios
   ungroup()
     
-    # df1 <- data.frame(sample = all_samples, value = expr_filt_matrix[x, ])
-    # df2 <- merge(df1, grade_df)
-    # df2
-}))
 
-#save(new_data_log, file="hypo_village_data/psc_predict_log_graphdata.RData")
+group_df_opt_out <- graph_df %>%
+  group_by(y, opt_in_log) %>%
+  tally() %>%
+  filter(opt_in_log == 0) %>% ## filter for all opt ins...
+  mutate(perc = n/sim_total,
+         opt_in_out = "Opt Out") %>% ##384 total scenarios
+  ungroup()
+
+log_df <- rbind(group_df_opt_in, group_df_opt_out)
+
+}))
+beep()
+
+save(new_data_log, file="hypo_village_data/PuertoSanCarlos/psc_predict_log_graphdata.RData")
 
 ## Interval Model Graph Data ##
 system.time(new_data_int <- lapply(my_data_psc, function(x) {
   
-  test_graph_df <- x %>%
+  graph_df <- x %>%
   merge(dollar_values) %>%
   mutate(opt_in_int = ifelse(int_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
   arrange(opt_in_int)
 
-test_group_df <- test_graph_df %>%
+group_df_opt_in <- graph_df %>%
   group_by(y, opt_in_int) %>%
   tally() %>%
   filter(opt_in_int == 1) %>% ## filter for all opt ins...
-  mutate(perc_opt_in_int = n/sim_total) %>% ##384 total scenarios
+  mutate(perc = n/sim_total,
+         opt_in_out = "Opt In") %>% ##384 total scenarios
   ungroup()
-    
-}))
 
-#save(new_data_int, file="hypo_village_data/psc_predict_int_graphdata.RData")
+group_df_opt_out <- graph_df %>%
+  group_by(y, opt_in_int) %>%
+  tally() %>%
+  filter(opt_in_int == 0) %>% ## filter for all opt ins...
+  mutate(perc = n/sim_total,
+         opt_in_out = "Opt Out") %>% ##384 total scenarios
+  ungroup()
+
+int_df <- rbind(group_df_opt_in, group_df_opt_out)
+  
+}))
+beep()
+
+save(new_data_int, file="hypo_village_data/PuertoSanCarlos/psc_predict_int_graphdata.RData")
 
 ```
 
@@ -188,31 +210,94 @@ test_group_df <- test_graph_df %>%
 
 ```{r}
 ## plot log log acceptance rate ##
-load(file="hypo_village_data/psc_predict_log_graphdata.RData")
+load(file="hypo_village_data/PuertoSanCarlos/psc_predict_log_graphdata.RData")
 
-test_log <- bind_rows(new_data_log, .id = "package") %>%
-  merge(packages)
+# ## Test graph log log 
+# ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
+#   geom_point() +
+#   geom_line() +
+#   labs(x = "Payment to Fisher ($/month)", y = "Percent opt in VMS Program", title = "All Technology and Demographic Combinations") +
+#   theme_bw() +
+#   scale_x_continuous(breaks = seq(-3,8, 1))
 
-ggplot(test_log, aes(x = y, y = perc_opt_in_log)) +
-  geom_point() +
-  geom_line() + 
-  facet_wrap(~package)
-
-ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
-  geom_point() +
-  geom_line() +
-  labs(x = "Payment to Fisher ($/month)", y = "Percent opt in VMS Program", title = "All Technology and Demographic Combinations") +
-  theme_bw() +
-  scale_x_continuous(breaks = seq(-3,8, 1))
+log_all <- bind_rows(new_data_log, .id = "package") %>%
+  merge(packages) %>%
+  rename(
+         "opt" = "opt_in_log") %>%
+  mutate(regression_type = "log_log",
+         package = as.integer(package))
 
 ## plot interval regression acceptance rate ##
-load(file="hypo_village_data/psc_predict_int_graphdata.RData")
+load(file="hypo_village_data/PuertoSanCarlos/psc_predict_int_graphdata.RData")
 
-ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
-  geom_point() +
-  geom_line() +
-  labs(x = "Fisher Payment ($/month)", y = "Percent opt in VMS Program", title = "Package 7 Puerto San Carlos") +
-  theme_bw() +
-  scale_x_continuous(breaks = seq(-3,8, 1))
+# ## Test graph interval
+# ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
+#   geom_point() +
+#   geom_line() +
+#   labs(x = "Fisher Payment ($/month)", y = "Percent opt in VMS Program", title = "Package 7 Puerto San Carlos") +
+#   theme_bw() +
+#   scale_x_continuous(breaks = seq(-3,8, 1))
+
+int_all <- bind_rows(new_data_int, .id = "package") %>%
+  merge(packages) %>%
+  rename(
+         "opt" = "opt_in_int") %>%
+  mutate(regression_type = "interval",
+         package = as.integer(package))
+
+# ## test graph log log 
+# log_all %>% 
+#   filter(package == 1) %>%
+#   ggplot(aes(x = y, y = perc)) +
+#   geom_point() +
+#   geom_line() + 
+#   facet_wrap(~package+opt_in_out)
+
+# ## test graph interval
+# int_all %>% 
+#   filter(package == 1) %>%
+#   ggplot(aes(x = y, y = perc)) +
+#   geom_point() +
+#   geom_line() + 
+#   facet_wrap(~package+opt_in_out)
+
+PSC_all_predictions <- rbind(log_all, int_all)
+
+## graph package 1 for interval regression
+# PSC_all_predictions %>%
+#   filter(package == 1, regression_type == "interval") %>%
+#   ggplot(aes(x = y, y = perc)) +
+#   geom_point() +
+#   geom_line() +
+#   facet_wrap(~package+opt_in_out)
+## it works.
+
+## Save the final dataframe
+
+#write.csv(PSC_all_predictions, "hypo_village_data/PuertoSanCarlos/psc_all_predictions_FINAL.csv", row.names = FALSE)
+
+## save all of the graphs 
+
+
+PSC_all_predictions <- read_csv("hypo_village_data/PuertoSanCarlos/psc_all_predictions_FINAL.csv")
+
+for(i in unique(PSC_all_predictions$package)){
+  for(j in unique(PSC_all_predictions$opt_in_out)){
+    for(m in unique(PSC_all_predictions$regression_type)){
+
+  p <- ggplot(data = filter(PSC_all_predictions, package == i, opt_in_out == j, regression_type == m), aes(x = y, y = perc)) +
+    geom_point() + 
+    geom_line() +
+    labs(title = "Puerto San Carlos", x = "Fisher Payment ($/month)", y = paste("Percent", j, "VMS Program", sep = " "), caption = paste("Package", i)) +
+    theme_classic() +
+    scale_x_continuous(breaks = seq(-3,8, 1)) +
+    scale_y_continuous(breaks = seq(0,1, 0.1))
+
+  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos/graphs/", m, "_", i, "_", j, ".png"))
+  
+    }
+  }
+}
+
 ```
 
