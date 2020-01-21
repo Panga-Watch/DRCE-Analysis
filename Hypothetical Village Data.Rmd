@@ -555,7 +555,6 @@ for(i in unique(PSC_all_predictions$package)){
     for(m in unique(PSC_all_predictions$regression_type)){
 
   p <- ggplot(data = filter(PSC_all_predictions, package == i, opt_in_out == j, regression_type == m), aes(x = y, y = perc)) +
-    geom_point() + 
     geom_line() +
     labs(title = "Puerto San Carlos", x = "Fisher Payment ($/month)", y = paste("Percent", j, "VMS Program", sep = " "), caption = paste("Package", i)) +
     theme_classic() +
