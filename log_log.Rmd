@@ -143,7 +143,11 @@ bind_log <- bind_wtp %>%
   mutate(own = as.factor(own)) 
 
 #write.csv(bind_log, "int/log_log_wtp.csv", row.names = FALSE)
-
+bind_log_hicksian <- bind_wtp %>% 
+  #filter(choice == 1) %>% 
+  mutate(sos = ifelse(sos==1,0,1)) %>% 
+  mutate(info = ifelse(info == 2,0,1)) %>% 
+  mutate(own = as.factor(own)) 
 ```
 
 
@@ -365,7 +369,23 @@ bind_log_final <- bind_log %>%
 
 wtpmin<- min(bind_log_final$wtp)
 
+bind_log_hicksian_final <-  bind_log_hicksian %>%
+  left_join(variables_log) %>%
+  within(own <- relevel(own, ref = 4)) %>%
+  within(education <- relevel(education, ref = "no_formal")) %>%
+  rename("bid" = "wtp")
+```
 
+```{r}
+#hicksian demand test
+
+mylogit <- glm(choice ~ bid + sos + info + own + education + fishtech + rank_one + gdp_prop, data = bind_log_hicksian_final, family = "binomial")
+
+summary(mylogit, clusters = c("community"))
+mylogit_rows <- c(names(mylogit$coefficients))
+
+coef_binom <- data.frame(mylogit_rows, coefs_logit = mylogit$coefficients) %>%
+  mutate(coefs_wtp_model = coefs_logit/mylogit$coefficients[2])
 ```
 
 Include new summary function that incorporates clusters
