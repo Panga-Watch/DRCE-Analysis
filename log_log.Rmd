@@ -364,8 +364,18 @@ bind_log_final <- bind_log %>%
   within(education <- relevel(education, ref = "no_formal"))
 
 wtpmin<- min(bind_log_final$wtp)
+```
 
+```{r}
+#hicksian demand test
 
+mylogit <- glm(choice ~ wtp + sos + info + own + education + fishtech + rank_one, data = bind_log_final, family = "binomial")
+
+summary(mylogit)
+mylogit_rows <- c(names(mylogit$coefficients))
+
+coef_binom <- data.frame(mylogit_rows, coefs = mylogit$coefficients) %>%
+  mutate(wtp_model = coefs/mylogit$coefficients[2])
 ```
 
 Include new summary function that incorporates clusters
