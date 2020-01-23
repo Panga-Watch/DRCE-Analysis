@@ -143,11 +143,6 @@ bind_log <- bind_wtp %>%
   mutate(own = as.factor(own)) 
 
 #write.csv(bind_log, "int/log_log_wtp.csv", row.names = FALSE)
-bind_log_hicksian <- bind_wtp %>% 
-  #filter(choice == 1) %>% 
-  mutate(sos = ifelse(sos==1,0,1)) %>% 
-  mutate(info = ifelse(info == 2,0,1)) %>% 
-  mutate(own = as.factor(own)) 
 ```
 
 
@@ -369,23 +364,31 @@ bind_log_final <- bind_log %>%
 
 wtpmin<- min(bind_log_final$wtp)
 
-bind_log_hicksian_final <-  bind_log_hicksian %>%
-  left_join(variables_log) %>%
-  within(own <- relevel(own, ref = 4)) %>%
-  within(education <- relevel(education, ref = "no_formal")) %>%
-  rename("bid" = "wtp")
 ```
 
 ```{r}
 #hicksian demand test
 
-mylogit <- glm(choice ~ bid + sos + info + own + education + fishtech + rank_one + gdp_prop, data = bind_log_hicksian_final, family = "binomial")
+# bind_log_hicksian <- bind_wtp %>% 
+#   #filter(choice == 1) %>% 
+#   mutate(sos = ifelse(sos==1,0,1)) %>% 
+#   mutate(info = ifelse(info == 2,0,1)) %>% 
+#   mutate(own = as.factor(own))
+# 
+# bind_log_hicksian_final <-  bind_log_hicksian %>%
+#   left_join(variables_log) %>%
+#   within(own <- relevel(own, ref = 4)) %>%
+#   within(education <- relevel(education, ref = "no_formal")) %>%
+#   rename("bid" = "wtp")
 
-summary(mylogit, clusters = c("community"))
-mylogit_rows <- c(names(mylogit$coefficients))
-
-coef_binom <- data.frame(mylogit_rows, coefs_logit = mylogit$coefficients) %>%
-  mutate(coefs_wtp_model = coefs_logit/mylogit$coefficients[2])
+# mylogit <- glm(choice ~ bid + sos + info + own + education + fishtech + rank_one, data = bind_log_hicksian_final, family = "binomial")
+# save(mylogit, file = "output/hicksian.rda")
+# 
+# summary(mylogit, clusters = c("community"))
+# mylogit_rows <- c(names(mylogit$coefficients))
+# 
+# coef_binom <- data.frame(mylogit_rows, coefs_logit = mylogit$coefficients) %>%
+#   mutate(coefs_wtp_model = coefs_logit/mylogit$coefficients[2])
 ```
 
 Include new summary function that incorporates clusters
@@ -399,19 +402,18 @@ eval(parse(text = getURL(url_robust, ssl.verifypeer = FALSE)),
      envir=.GlobalEnv)
 ```
 
+Prep data for interval regression
 ```{r}
 ## Make it into interval data... and run models again.. without log..
 
 
 # For IND
-# 
 # wtp_1 = $2.14
 # wtp_2 = $3.56
 # wtp_3 = $5.35
 # wtp_4 = $7.12
-# 
+
 # For MEX 
-# 
 # wtp_1 = $2.07
 # wtp_2 = $3.62
 # wtp_3 = $5.17
@@ -448,6 +450,10 @@ bind_interval_final <- rbind(bind_interval_ind, bind_interval_mex) %>%
 intervals <- with(bind_interval_final, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final)), type = "interval"))
 intervals
 
+```
+
+Run regressions on interval data
+```{r}
 int_tech <- survreg(intervals ~ sos + info + own, data = bind_interval_final, dist = "gaussian")
 summary(int_tech)
 
@@ -501,12 +507,13 @@ summary(int_16, cluster = c("community"))
 
 #save(int_15, file = "output/int_15.rda")
 
-save(int_16, file = "output/int_16_gdp_prop.rda")
+#save(int_16, file = "output/int_16_gdp_prop.rda")
 
 AIC(int_tech, int, int_1, int_2, int_3, int_4, int_5, int_6, int_7, int_8, int_9, int_10, int_11, int_12, int_13, int_15)
 ```
 
 
+Run log-log and log-linear regressions on our data for WTP
 ```{r}
 ## Traditional linear regression:
 basic_wtp_lm <- lm(wtp  ~ sos + info + own  + fishtech + factor(country) + rank_one + gdp_prop, data = bind_log_final)
@@ -586,7 +593,7 @@ AIC(basic_wtp_lm, wtp_lm, wtp_lm_1, wtp_lm_2, wtp_lm_3, wtp_lm_4, wtp_lm_5, wtp_
 ggplot(bind_log_final, aes(x = income_usd, y = wtp, color = education)) + geom_point() ## it seems that education vs income are pretty random... ok to both use in the model. 
 ```
 
-Take a look at summary output (clustered on community) for our 3 best models: 
+Take a look at summary output (clustered on community) for our 3 best log models: 
 ```{r}
 
 summary(wtp_lm_14, cluster = c("community"))
@@ -611,7 +618,7 @@ summary(test_wtp, cluster = c("community"))
 ```
 
 
-
+Predict and retransform our models on our data just as a check
 ```{r}
 ## Predict values for our best models
 predict_lm14 <- cbind(bind_log_final, fitted = fitted(wtp_lm_14)) %>% 
@@ -639,6 +646,7 @@ summary(test$wtp_predict_int)
 ```
 
 
+Look at exact percent changes in WTP per our categorical variables for our best models 
 ```{r}
 # calculate exact percent change in WTP for our categorical variables for our best models
 coef_lm_14 <- as.data.frame(wtp_lm_14$coefficients) %>%
@@ -657,7 +665,7 @@ coef_lm_16 <- as.data.frame(wtp_lm_16$coefficients) %>%
 
 ```
 
-Run the best technology/best characteristics (BTBC), best tech/worst characteristics (BTWC), worst tech/best characteristics (WTBC), and worst tech/worst characteristics (WTWC) for models 14, 15, and 16.
+Run the best technology/best characteristics (BTBC), best tech/worst characteristics (BTWC), worst tech/best characteristics (WTBC), and worst tech/worst characteristics (WTWC) for log models 14, 15, and 16.
 ```{r}
 #### Model 14
 # best tech: sos = 1, info = 0, own = 1
@@ -726,227 +734,9 @@ row.names(predict_16) <- rownames
 
 three_models_predictions <- cbind(lm_14 = predict_14, lm_15 = predict_15, lm_16 = predict_16)
 
-write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
+#write.csv(three_models_predictions, "output/best_worst_scenarios_models.csv")
 ```
 
-## Run simulations for lm15
-
-For each of the characteristic combinations presented, we will run the model for all 16 packages. For example, simulation 1 (fishtech == 1, rankone == "weather", education == "formal"), will be run 16 different times (one for each package). 
-
-Simulation 1; most common characteristics from our sample: 
-```{r}
-## lm_15 run sim 1
-sim_1_chars <- data.frame(fishtech = 1, rank_one = "weather", education = "formal")
-
-packages_1 <- packages %>%
-  filter(package <= 16)
-packages_2 <- packages %>%
-  filter(package >16)
-
-packages_join <- inner_join(packages_1, packages_2, by = c("info", "sos", "own")) %>%
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
-  select(-package.y) %>%
-  mutate(own = as.factor(own))
-
-sim_1_data <- merge(packages_join, sim_1_chars) %>%
-  select(-package.x)
-
-sim_1_predict <- predict(wtp_lm_15, newdata = sim_1_data)
-sim_1_predict_actual <- data.frame(sim_1_data, predict_wtp = (exp(sim_1_predict) - 1 + wtpmin)) %>%
-  mutate(simulation = 1)
-
-```
-
-Simulation 2; Most preferred characteristics to maximize WTP from our model:
-```{r}
-## lm_15 run sim 2
-sim_2_chars <- data.frame(fishtech = 1, rank_one = "corruption", education = "higher")
-sim_2_data <- merge(packages_join, sim_2_chars) %>%
-  select(-package.x)
-
-sim_2_predict <- predict(wtp_lm_15, newdata = sim_2_data)
-sim_2_predict_actual <- data.frame(sim_2_data, predict_wtp = (exp(sim_2_predict) - 1 + wtpmin))%>%
-  mutate(simulation = 2)
-```
-
-Simulation 3; Characteristics most commonly found in Indonesia from our sample:
-```{r}
-ind_chars <- bind_log_final %>%
-  filter(country == "IND")
-ind_fishtech <- group_by(ind_chars, fishtech) %>%
-  summarise(length(fishtech)) ## 38 have exposure... meaning most common is to not have exposure. Plug fishtech = 0 into model.
-ind_rankone <- group_by(ind_chars, rank_one) %>%
-  summarise(length(rank_one)) ## weather biggest perceived problem in IND... rank_one = "weather"
-ind_edu <- group_by(ind_chars, education) %>%
-  summarise(length(education)) ## formal is most represented
-
-sim_3_chars <- data.frame(fishtech = 0, rank_one = "weather", education = "formal")
-sim_3_data <- merge(packages_join, sim_3_chars) %>%
-  select(-package.x)
-
-sim_3_predict <- predict(wtp_lm_15, newdata = sim_3_data)
-sim_3_predict_actual <- data.frame(sim_3_data, predict_wtp = (exp(sim_3_predict) - 1 + wtpmin)) %>%
-  mutate(simulation = 3)
-```
-
-Simulation 4; characteristics most commonly found in Mexico from our sample: 
-```{r}
-mex_chars <- bind_log_final %>%
-  filter(country == "MEX")
-mex_fishtech <- group_by(mex_chars, fishtech) %>%
-  summarise(length(fishtech)) ## They all have exposure.. meaning most common is to not have exposure. Plug fishtech = 1 into model.
-mex_rankone <- group_by(mex_chars, rank_one) %>%
-  summarise(length(rank_one)) ## pollution biggest perceived problem in IND... rank_one = "pollution"
-mex_edu <- group_by(mex_chars, education) %>%
-  summarise(length(education)) ## formal is most represented
-
-sim_4_chars <- data.frame(fishtech = 1, rank_one = "pollution", education = "formal")
-sim_4_data <- merge(packages_join, sim_4_chars) %>%
-  select(-package.x)
-
-sim_4_predict <- predict(wtp_lm_15, newdata = sim_4_data)
-sim_4_predict_actual <- data.frame(sim_4_data, predict_wtp = (exp(sim_4_predict) - 1 + wtpmin)) %>%
-  mutate(simulation = 4)
-
-simulations_lm_15 <- rbind(sim_1_predict_actual, sim_2_predict_actual, sim_3_predict_actual, sim_4_predict_actual)
-
-#write.csv(simulations_lm_15, "output/simulations_lm_15.csv", row.names = FALSE)
-```
-
-
-## Run simulations for lm14
-
-For each of the characteristic combinations presented, we will run the model for all 16 packages. For example, simulation 1 (fishtech == 1, rankone == "weather", education == "formal"), will be run 16 different times (one for each package). 
-
-Simulation 1; most common characteristics from our sample; once for indonesia, once for mexico: 
-```{r}
-## lm_14 run sim 1
-sim_1_chars_lm14 <- data.frame(fishtech = 1, rank_one = "weather", education = "formal")
-mex <- data.frame(country = "MEX")
-ind <- data.frame(country = "IND")
-
-
-sim_1_data_lm14_mex <- merge(packages_join, sim_1_chars_lm14) %>%
-  select(-package.x) %>%
-  merge(mex) 
-sim_1_data_lm14_ind <- merge(packages_join, sim_1_chars_lm14) %>%
-  select(-package.x) %>%
-  merge(ind)
-
-sim_1_data_lm14 <- rbind(sim_1_data_lm14_ind, sim_1_data_lm14_mex)
-
-sim_1_predict_lm14 <- predict(wtp_lm_14, newdata = sim_1_data_lm14)
-sim_1_predict_actual_lm14 <- data.frame(sim_1_data_lm14, predict_wtp = (exp(sim_1_predict_lm14) - 1 + wtpmin)) %>%
-  mutate(simulation = 1)
-
-```
-
-Simulation 2; Most preferred characteristics to maximize WTP from our model; once for indonesia, once for mexico:
-```{r}
-## lm_14 run sim 2
-sim_2_chars_lm14 <- data.frame(fishtech = 1, rank_one = "corruption", education = "higher")
-mex <- data.frame(country = "MEX")
-ind <- data.frame(country = "IND")
-
-
-sim_2_data_lm14_mex <- merge(packages_join, sim_2_chars_lm14) %>%
-  select(-package.x) %>%
-  merge(mex) 
-sim_2_data_lm14_ind <- merge(packages_join, sim_2_chars_lm14) %>%
-  select(-package.x) %>%
-  merge(ind)
-
-sim_2_data_lm14 <- rbind(sim_2_data_lm14_ind, sim_2_data_lm14_mex)
-
-sim_2_predict_lm14 <- predict(wtp_lm_14, newdata = sim_2_data_lm14)
-sim_2_predict_actual_lm14 <- data.frame(sim_2_data_lm14, predict_wtp = (exp(sim_2_predict_lm14) - 1 + wtpmin)) %>%
-  mutate(simulation = 2)
-
-simulations_lm_14 <- rbind(sim_1_predict_actual_lm14, sim_2_predict_actual_lm14)
-
-#write.csv(simulations_lm_14, "output/simulations_lm_14.csv", row.names = FALSE)
-```
-
-## Run simulations for lm16
-
-For each of the characteristic combinations presented, we will run the model for all 16 packages. For example, simulation 1 (fishtech == 1, rankone == "weather", education == "formal", gdp_prop = ), will be run 16 different times (one for each package). 
-
-Simulation 1; most common characteristics from our sample: 
-```{r}
-## lm_16 run sim 1
-avg_gdp_prop <- mean(bind_log_final$gdp_prop)
-
-sim_1_chars_lm16 <- data.frame(fishtech = 1, rank_one = "weather", education = "formal", gdp_prop = avg_gdp_prop)
-
-sim_1_data_lm16 <- merge(packages_join, sim_1_chars_lm16) %>%
-  select(-package.x)
-
-sim_1_predict_lm16 <- predict(wtp_lm_16, newdata = sim_1_data_lm16)
-sim_1_predict_actual_lm16 <- data.frame(sim_1_data_lm16, predict_wtp = (exp(sim_1_predict_lm16) - 1 + wtpmin)) %>%
-  mutate(simulation = 1)
-
-```
-
-Simulation 2; Most preferred characteristics to maximize WTP from our model:
-```{r}
-## lm_16 run sim 2
-min_gdp_prop <- min(bind_log_final$gdp_prop)
-
-sim_2_chars_lm16 <- data.frame(fishtech = 1, rank_one = "corruption", education = "higher", gdp_prop = min_gdp_prop)
-sim_2_data_lm16 <- merge(packages_join, sim_2_chars_lm16) %>%
-  select(-package.x)
-
-sim_2_predict_lm16 <- predict(wtp_lm_16, newdata = sim_2_data_lm16)
-sim_2_predict_actual_lm16 <- data.frame(sim_2_data_lm16, predict_wtp = (exp(sim_2_predict_lm16) - 1 + wtpmin))%>%
-  mutate(simulation = 2)
-```
-
-Simulation 3; Characteristics most commonly found in Indonesia from our sample:
-```{r}
-ind_chars <- bind_log_final %>%
-  filter(country == "IND")
-
-ind_avg_gdpprop <- mean(ind_chars$gdp_prop)
-ind_fishtech <- group_by(ind_chars, fishtech) %>%
-  summarise(length(fishtech)) ## 38 have exposure... meaning most common is to not have exposure. Plug fishtech = 0 into model.
-ind_rankone <- group_by(ind_chars, rank_one) %>%
-  summarise(length(rank_one)) ## weather biggest perceived problem in IND... rank_one = "weather"
-ind_edu <- group_by(ind_chars, education) %>%
-  summarise(length(education)) ## formal is most represented
-
-sim_3_chars_lm16 <- data.frame(fishtech = 0, rank_one = "weather", education = "formal", gdp_prop = ind_avg_gdpprop)
-sim_3_data_lm16 <- merge(packages_join, sim_3_chars_lm16) %>%
-  select(-package.x)
-
-sim_3_predict_lm16 <- predict(wtp_lm_16, newdata = sim_3_data_lm16)
-sim_3_predict_actual_lm16 <- data.frame(sim_3_data_lm16, predict_wtp = (exp(sim_3_predict_lm16) - 1 + wtpmin)) %>%
-  mutate(simulation = 3)
-```
-
-Simulation 4; characteristics most commonly found in Mexico from our sample: 
-```{r}
-mex_chars <- bind_log_final %>%
-  filter(country == "MEX")
-mex_avg_gdpprop <- mean(mex_chars$gdp_prop)
-mex_fishtech <- group_by(mex_chars, fishtech) %>%
-  summarise(length(fishtech)) ## They all have exposure.. meaning most common is to not have exposure. Plug fishtech = 1 into model.
-mex_rankone <- group_by(mex_chars, rank_one) %>%
-  summarise(length(rank_one)) ## pollution biggest perceived problem in IND... rank_one = "pollution"
-mex_edu <- group_by(mex_chars, education) %>%
-  summarise(length(education)) ## formal is most represented
-
-sim_4_chars_lm16 <- data.frame(fishtech = 1, rank_one = "pollution", education = "formal", gdp_prop = mex_avg_gdpprop)
-sim_4_data_lm16 <- merge(packages_join, sim_4_chars_lm16) %>%
-  select(-package.x)
-
-sim_4_predict_lm16 <- predict(wtp_lm_16, newdata = sim_4_data_lm16)
-sim_4_predict_actual_lm16 <- data.frame(sim_4_data_lm16, predict_wtp = (exp(sim_4_predict_lm16) - 1 + wtpmin)) %>%
-  mutate(simulation = 4)
-
-simulations_lm_16 <- rbind(sim_1_predict_actual_lm16, sim_2_predict_actual_lm16, sim_3_predict_actual_lm16, sim_4_predict_actual_lm16)
-
-#write.csv(simulations_lm_16, "output/simulations_lm_16.csv", row.names = FALSE)
-```
 
 ### Ultimate Simulation
 ```{r}
@@ -964,7 +754,7 @@ simulation_all_lm15 <- data.frame(simulation_data, wtp_predict = exp(predict(wtp
 simulation_all_int_15 <- data.frame(simulation_data, wtp_predict_int = predict(int_15, newdata = simulation_data))
 
 sims_log_int <- merge(simulation_all_lm15, simulation_all_int_15)
-write.csv(sims_log_int, "output/compare_log_int.csv")
+#write.csv(sims_log_int, "output/compare_log_int.csv")
 
 ## now we have a dataframe of every possible combination of our variables in lm_15 and a predicted wtp from lm_15...
 #write.csv(simulation_all_lm15, "output/lm_15_allcombo_predictions.csv")

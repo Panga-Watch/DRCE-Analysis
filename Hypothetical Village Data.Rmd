@@ -95,40 +95,40 @@ psc <- data.frame(
 
 ## Try it with the gamma distribution from the paper ##
 
-## Check the distribution of gdp_prop in our sample.
-gdp_prop_distribution <-gdp_prop_PSC_1 %>%
-  select(gdp_prop) %>%
-  gather(variable, value)
-
-gdp_prop_distribution %>%
- ggplot(aes(x = value, fill = variable)) +
-    geom_bkde() +
-    geom_rug() ## Gamma Distribution
-
-
-## 11,090 Mexican Pesos/month = $590.83
-avg_income <- 590.83*12 #7089.96/year
-avg_income_lower <- (590.83 - 1000)*12
-avg_income_higher <- (590.83 + 1000)*12
-lambda_hat <- avg_income/12000^2
-alpha_hat <- avg_income^2/12000^2
-
-x.gam <- rgamma(1800, rate = lambda_hat, shape = alpha_hat)
-
-gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX"), start = 2018, end = 2018) %>%
-  mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>%
-  rename(c = 1) %>%
-  select(-c, -year)
-
-gdp_prop_psc_test <- x.gam/gdp_raw$NY.GDP.PCAP.KD
-hist(gdp_prop_psc_test)
-
-psc <- data.frame(
-                  fishtech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
-                  education = sample(rep(education, round(1800*psc_prob_edu))),
-                  rank_one = "iuu",
-                  gdp_prop = gdp_prop_psc_test
-                  )
+# ## Check the distribution of gdp_prop in our sample.
+# gdp_prop_distribution <-gdp_prop_PSC_1 %>%
+#   select(gdp_prop) %>%
+#   gather(variable, value)
+# 
+# gdp_prop_distribution %>%
+#  ggplot(aes(x = value, fill = variable)) +
+#     geom_bkde() +
+#     geom_rug() ## Gamma Distribution
+# 
+# 
+# ## 11,090 Mexican Pesos/month = $590.83
+# avg_income <- 590.83*12 #7089.96/year
+# avg_income_lower <- (590.83 - 1000)*12
+# avg_income_higher <- (590.83 + 1000)*12
+# lambda_hat <- avg_income/12000^2
+# alpha_hat <- avg_income^2/12000^2
+# 
+# x.gam <- rgamma(1800, rate = lambda_hat, shape = alpha_hat)
+# 
+# gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX"), start = 2018, end = 2018) %>%
+#   mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>%
+#   rename(c = 1) %>%
+#   select(-c, -year)
+# 
+# gdp_prop_psc_test <- x.gam/gdp_raw$NY.GDP.PCAP.KD
+# hist(gdp_prop_psc_test)
+# 
+# psc <- data.frame(
+#                   fishtech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
+#                   education = sample(rep(education, round(1800*psc_prob_edu))),
+#                   rank_one = "iuu",
+#                   gdp_prop = gdp_prop_psc_test
+#                   )
 
 
 
@@ -167,6 +167,7 @@ psc_all_packages <- merge(psc, packages)
 ## load in specific model 
 load("output/lm_15.rda")
 load("output/int_15.rda")
+load("output/hicksian.rda")
 
 ## If using lm_15, plug in this:
 psc_all_packages_lm15 <- psc_all_packages %>%
@@ -174,7 +175,7 @@ psc_all_packages_lm15 <- psc_all_packages %>%
 
 ## If using lm with gdp_prop, plug in psc_all_packages... skip to below this, section labeled "GDP Prop Predictions"
 
-psc_predict <- data.frame(psc_all_packages, lm_15_wtp = exp(predict(wtp_lm_15, newdata = psc_all_packages)) - 1 + wtpmin, int_15_wtp = predict(int_15, newdata = psc_all_packages)) ## if you want to add predictions from another model, just tack it onto the end. Now we can filter for a technology and make graphs based off of that. 
+psc_predict <- data.frame(psc_all_packages_lm15, lm_15_wtp = exp(predict(wtp_lm_15, newdata = psc_all_packages)) - 1 + wtpmin, int_15_wtp = predict(int_15, newdata = psc_all_packages)) ## if you want to add predictions from another model, just tack it onto the end. Now we can filter for a technology and make graphs based off of that. 
 packages <- read_csv("raw/packages.csv")  %>%
   filter(package <= 16) %>%
   mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
@@ -207,6 +208,17 @@ test <- my_data_psc[[1]] ## this is psc with package 1 predictions. Can do the s
 
 sim_total <- nrow(my_data_psc[[1]])
 dollar_values <- seq(-3, 8, by = 0.01)
+
+test_hicksianxx <- psc_predict_packages %>%
+  filter(package == 1) %>%
+  merge(dollar_values) %>%
+  rename("bid" = "y") %>%
+  select(-lm_15_wtp, -int_15_wtp, -package)
+
+predict_hicksian <- data.frame(test_hicksianxx, predict_prob <- predict(mylogit, newdata = test_hicksianxx, type = "response"))
+
+ggplot(predict_hicksian, aes(x = bid, y = predict_prob)) + 
+  geom_point()
 
 ## Log Model Graph Data ##
 system.time(new_data_log <- lapply(my_data_psc, function(x) {
