@@ -13,6 +13,7 @@ library(survival)
 library(utils)
 library(cowplot)
 library(WDI)
+library(beepr)
 
 total_sim_data <- read_csv("output/lm_15_allcombo_predictions.csv") %>%
   select(-X1)
@@ -202,7 +203,6 @@ load("hypo_village_data/PuertoSanCarlos/psc_predict_by_package.RData")
 
 mean(my_data_psc[[1]]$lm_15_wtp)
 mean(my_data_psc[[1]]$int_15_wtp)
-#write.csv(psc_predict, "hypo_village_data/PuertoSanCarlos/PuertoSanCarlos_predictions.csv", row.names = FALSE)
 
 test <- my_data_psc[[1]] ## this is psc with package 1 predictions. Can do the same for all 16 packages.
 
@@ -568,12 +568,13 @@ for(i in unique(PSC_all_predictions$package)){
 
   p <- ggplot(data = filter(PSC_all_predictions, package == i, opt_in_out == j, regression_type == m), aes(x = y, y = perc)) +
     geom_line() +
+    geom_point() +
     labs(title = "Puerto San Carlos", x = "Fisher Payment ($/month)", y = paste("Percent", j, "VMS Program", sep = " "), caption = paste("Package", i)) +
     theme_classic() +
     scale_x_continuous(breaks = seq(-3,8, 1)) +
     scale_y_continuous(breaks = seq(0,1, 0.1))
 
-  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos_gdp/graphs_gamma/", m, "_", i, "_", j, ".png"))
+  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos_gdp/graphs/", m, "_", i, "_", j, ".png"))
   
     }
   }

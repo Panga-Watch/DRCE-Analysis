@@ -428,7 +428,7 @@ bind_interval_mex <- bind_log_final %>%
                                              ifelse(wtp == 0, 2.07, 
                                                     ifelse(wtp == 2.07, 3.62,
                                                            ifelse(wtp == 3.62, 5.17,
-                                                                  ifelse(wtp == 5.17, 7.75, 10))))))))) 
+                                                                  ifelse(wtp == 5.17, 7.75, 13.33))))))))) ## chose 13.33 as the upper bound because this is two cell phone bill increments higher than 7.75
                                                                         
                                                                          
  bind_interval_ind <- bind_log_final %>%
@@ -441,7 +441,7 @@ bind_interval_mex <- bind_log_final %>%
                   ifelse(wtp == 0, 2.14, 
                     ifelse(wtp == 2.14, 3.56, 
                       ifelse(wtp == 3.56, 5.35, 
-                        ifelse(wtp == 5.35, 7.12, 10))))))))) 
+                        ifelse(wtp == 5.35, 7.12, 11.02))))))))) ## chose 11.02 as the upper bound because this is two cell phone bill increments higher than 7.12
   
 
 bind_interval_final <- rbind(bind_interval_ind, bind_interval_mex) %>%
@@ -509,7 +509,7 @@ summary(int_16, cluster = c("community"))
 
 #save(int_16, file = "output/int_16_gdp_prop.rda")
 
-AIC(int_tech, int, int_1, int_2, int_3, int_4, int_5, int_6, int_7, int_8, int_9, int_10, int_11, int_12, int_13, int_15)
+AIC(int_tech, int, int_1, int_2, int_3, int_4, int_5, int_6, int_7, int_8, int_9, int_10, int_11, int_12, int_13, int_15, int_16)
 ```
 
 
