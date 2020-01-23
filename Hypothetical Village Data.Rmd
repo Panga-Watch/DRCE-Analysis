@@ -209,16 +209,16 @@ test <- my_data_psc[[1]] ## this is psc with package 1 predictions. Can do the s
 sim_total <- nrow(my_data_psc[[1]])
 dollar_values <- seq(-3, 8, by = 0.01)
 
-test_hicksianxx <- psc_predict_packages %>%
-  filter(package == 1) %>%
-  merge(dollar_values) %>%
-  rename("bid" = "y") %>%
-  select(-lm_15_wtp, -int_15_wtp, -package)
-
-predict_hicksian <- data.frame(test_hicksianxx, predict_prob <- predict(mylogit, newdata = test_hicksianxx, type = "response"))
-
-ggplot(predict_hicksian, aes(x = bid, y = predict_prob)) + 
-  geom_point()
+# test_hicksianxx <- psc_predict_packages %>%
+#   filter(package == 1) %>%
+#   merge(dollar_values) %>%
+#   rename("bid" = "y") %>%
+#   select(-lm_15_wtp, -int_15_wtp, -package)
+# 
+# predict_hicksian <- data.frame(test_hicksianxx, predict_prob <- predict(mylogit, newdata = test_hicksianxx, type = "response"))
+# 
+# ggplot(predict_hicksian, aes(x = bid, y = predict_prob)) + 
+#   geom_point()
 
 ## Log Model Graph Data ##
 system.time(new_data_log <- lapply(my_data_psc, function(x) {
