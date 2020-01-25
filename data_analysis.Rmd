@@ -202,7 +202,11 @@ own4_actual <- data.frame(names = "own.public",  0, actual =-sum(own_actual$actu
 
 own_actual_final <- rbind(own_actual, own4_actual)
 
-all_actual <- rbind(sos_actual_final, info_actual_final, own_actual_final)
+all_actual <- rbind(sos_actual_final, info_actual_final, own_actual_final) %>% 
+  select(-clogit_coef)
+write.csv(all_actual, "output/pooled_clogit_actual_coefs.csv", row.names = FALSE)
+
+all_actual <- read_csv("output/pooled_clogit_actual_coefs.csv")
 
 positions <- c("sos", "sos0", "info", "info0", "own.fisher", "own.industry", "own.gov", "own.public")
 
