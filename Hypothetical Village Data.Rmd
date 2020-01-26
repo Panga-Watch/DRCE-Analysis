@@ -582,6 +582,23 @@ for(i in unique(PSC_all_predictions$package)){
 
 ```
 
+```{r}
+
+
+try_psc<-psc_predict %>% 
+  left_join(packages) %>% 
+  #filter(regression_type == "interval") %>% 
+  group_by(package, int_16_wtp) %>% 
+  tally() %>% 
+ # ungroup() %>% 
+  mutate(prop=n/sum(n)) %>% 
+  arrange(desc(int_16_wtp)) %>% 
+  mutate(prop_sum = cumsum(prop)) 
+
+
+ggplot(try_psc, aes(x= int_16_wtp)) +
+  geom_smooth(aes(y=prop_sum, color=as.factor(package), fill = as.factor(package)), se = FALSE)
+```
 
 
 
