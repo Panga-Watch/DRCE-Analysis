@@ -172,7 +172,7 @@ load("output/hicksian.rda")
 
 ## If using lm_15, plug in this:
 psc_all_packages_lm15 <- psc_all_packages %>%
-  select(-gdp_prop)
+  dplyr::select(-gdp_prop)
 
 ## If using lm with gdp_prop, plug in psc_all_packages... skip to below this, section labeled "GDP Prop Predictions"
 
@@ -664,6 +664,18 @@ for (i in unique(pepela_predict_packages$package)) {
 
 #save(my_data_pepela, file="hypo_village_data/Pepela/pepela_predict_by_package.RData") ## save this list to read back in for graphs.
 
+try_p<-pepela_predict_packages %>% 
+#  filter(package==1) %>% 
+  group_by(package, int_15_wtp) %>% 
+  tally() %>% 
+ # ungroup() %>% 
+  mutate(prop=n/sum(n)) %>% 
+  arrange(desc(int_15_wtp)) %>% 
+  mutate(prop_sum = cumsum(prop)) 
+
+
+ggplot(try_p, aes(x= int_15_wtp)) +
+  geom_smooth(aes(y=prop_sum, color=as.factor(package), fill = as.factor(package)))
 
 ```
 

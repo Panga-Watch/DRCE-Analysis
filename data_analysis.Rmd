@@ -11,6 +11,8 @@ output:
     includes: 
   pdf_document:
     toc: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Summary
@@ -774,19 +776,13 @@ choice_package<-choice %>%
   left_join(packages) %>% 
   mutate(choice = ifelse(package <=16,1,2))
 
+survey <- read_csv("raw/master_survey_resp.csv")
 
-survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>% 
-  select(survey_id, survey_version, choice, package_nopackage, starts_with("wtp"), starts_with("wtr"), country)
+ 
 
-pack_yes<- survey %>% 
-  filter(package_nopackage == 1) %>% 
-  mutate(wtp = ifelse(wtp_4== "y", 4,
-                      ifelse(wtp_4== "n", 3,
-                             ifelse(wtp_3=="n", 2,
-                                    ifelse(wtp_2=="n", 1, 0))))) %>% 
-  select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
-  left_join(choice_package) %>% 
-  mutate(choice=1)
+
+
+
 
 pack_no <- survey %>% 
   filter(package_nopackage == 0) %>% 
@@ -834,4 +830,105 @@ wtp_2 = $3.62
 wtp_3 = $5.17
 wtp_4 = $7.75
 
+```{r}
+wtp_USD<-data.frame("level"=0:4,  "USD" = c(0,2.07, 3.56, 5.17, 7.12))
+
+wtr_USD<-data.frame("level"=-1:-4,  "USD" = c(-2.07, -3.56, -5.17, -7.12))
+
+USD<-rbind(wtp_USD, wtr_USD)
+
+usd1<-USD %>% 
+  mutate(bid1=level)
+
+usd2<-USD %>% 
+  mutate(bid2=level)
+
+library(DCchoice)
+ahelp(DCchoice)
+
+survey <- read_csv("raw/master_survey_resp.csv") 
+
+pack_yes<- survey %>% 
+  select(survey_id, starts_with("wtp_"), starts_with("wtr_")) %>% 
+  mutate(wtp = ifelse(wtp_1 == "n", 0,
+                      ifelse(wtp_2 == "n", 1,
+                             ifelse(wtp_3 == "n", 2,
+                                    ifelse(wtp_4 == "n", 3, 
+                                           ifelse(wtp_4 == "y", 4, "NA")))))) %>% 
+  mutate(wtr = ifelse(wtr_1== "y", -1,
+                      ifelse(wtr_2== "y", -2,
+                             ifelse(wtr_3=="y", -3,
+                                    ifelse(wtr_4=="y", -4, -5)))))
+
+yn<-pack_yes %>% 
+  filter(wtp!=4) %>% 
+  select(survey_id, wtp) %>%
+  mutate(wtp=as.integer(wtp)) %>% 
+  mutate(R1=1, R2=0, bid1=wtp, bid2=wtp+1) %>% 
+  select(-wtp)
+
+yy<-pack_yes %>% 
+  filter(wtp==4) %>% 
+  select(survey_id, wtp) %>%
+  mutate(wtp=as.integer(wtp)) %>% 
+  mutate(R1=1, R2=1, bid1=wtp-1, bid2=wtp) %>% 
+  select(-wtp)
+
+ny<-pack_yes %>% 
+  filter(wtr!=-5) %>% 
+  select(survey_id, wtr) %>%
+  mutate(wtr=as.integer(wtr)) %>% 
+  mutate(R1=0, R2=1, bid1=wtr+1, bid2=wtr) %>% 
+  select(-wtr)
+
+nn<-pack_yes %>% 
+  filter(wtr==-5) %>% 
+  select(survey_id, wtr) %>%
+  mutate(wtr=as.integer(wtr)) %>% 
+  mutate(R1=0, R2=0, bid1=wtr+2, bid2=wtr+1) %>% 
+  select(-wtr)
+
+dchoice<-bind_rows(yn, yy, ny, nn)
+
+dc_usd<-dchoice %>% 
+  left_join(usd1, by="bid1") %>% 
+  left_join(usd2, by="bid2") %>% 
+  mutate(bid1=USD.x, bid2=USD.y) %>% 
+  select(survey_id, bid1, bid2, R1, R2)
+
+dc_package<-survey %>% 
+  select(survey_id, survey_version, choice) %>% 
+  left_join(choice_package) %>% 
+  right_join(dc_usd) %>% 
+  select(-survey_version, -choice, -package) %>% 
+  mutate(sos=sos-1) %>% 
+  mutate(info=-(info-2)) %>% 
+  mutate(own=as.factor(own))
+
+fmdb <- R1 + R2 ~ sos + info + own | bid1+bid2
+
+NPdb <- dbchoice(fmdb, data = dc_package, dist = "logistic")
+
+summary(NPdb)
+
+
+# The Bootstrap method
+set.seed(123) 
+bootCI(NPdb)
+
+# DBDC model
+plot(NPdb, las = 1, xlab = "Bid amounts in USD", main = "DBDC model", cex.main = 0.8, 
+    font.main = 4, xlim = c(-10, 10))
+```
+
+```{r}
+install.packages("DCchoice",
+repos = c("@CRAN@", "http://www.bioconductor.org/packages/release/bioc"),
+dep = TRUE)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Icens")
+```
 
