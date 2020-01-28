@@ -378,6 +378,22 @@ for(i in unique(PSC_all_predictions$package)){
   }
 }
 
+
+graph_data_psc <- PSC_all_predictions %>%
+  filter(opt_in_out == "Opt In", package %in% c(8,11), regression_type == "interval")
+  
+  ggplot(graph_data_psc, aes(x = y, y = perc, color = factor(sos))) + 
+    geom_line() +
+    theme_bw() +
+    labs() +
+    labs(x = "Cost to Fisher ($ per month)", y = "Percentage of Population to Opt In") +
+    #geom_vline(xintercept = c(0.97, -0.21), linetype = "dotted", color = "darkgreen") +
+     #geom_vline(xintercept = c(3.15, 4.41), linetype = "dotted", color = "red") +
+        scale_x_continuous(breaks = c(-3,-2, -1, 0, 1, 2, 3, 4, 5, 6)) +
+    #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    scale_color_manual(values = c("goldenrod1", "lightseagreen"), name = "SOS Functionality", labels = c("No", "Yes")) 
+  #caption = "Technology Attributes: Non-anonymous, Public access \n Biggest problem: IUU"
+
 ```
 
 GDP Prop Predictions
@@ -873,12 +889,12 @@ graph_data_pepela <- Pepela_all_predictions %>%
   ggplot(graph_data_pepela, aes(x = y, y = perc, color = factor(sos))) + 
     geom_line() +
     theme_bw() +
-    labs(caption = "Non-anonymous, Public access") +
-    labs(x = "Cost to Fisher ($ per month)", y = "Percentage of Population to Opt In", title = "Pepela: GFW Realistic Technology") +
-    geom_vline(xintercept = c(-1.88, -0.61), linetype = "dotted", color = "darkgreen") +
+    #labs(caption = "Non-anonymous, Public access") +
+    labs(x = "Cost to Fisher ($ per month)", y = "Percentage of Population to Opt In") +
+    #geom_vline(xintercept = c(-1.88, -0.61), linetype = "dotted", color = "darkgreen") +
      #geom_vline(xintercept = c(3.15, 4.41), linetype = "dotted", color = "red") +
-        scale_x_continuous(breaks = c(-2, -1.88, -0.61, 0, 0.86, 2 ,4)) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+        scale_x_continuous(breaks = c(-3,-2, -1, 0, 1, 2,3 ,4)) +
+    #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
     scale_color_manual(values = c("goldenrod1", "lightseagreen"), name = "SOS Functionality", labels = c("No", "Yes")) 
        # scale_color_discrete(name = "SOS Functionality", labels = c("No", "Yes")) 
 
