@@ -108,10 +108,11 @@ wtp_3 = $5.17
 wtp_4 = $7.75
 
 ```{r}
-
+#wtp == -5, -100, 
 bind_ind <- bind %>% 
   filter(country =="IND") %>% 
-  mutate(wtp = ifelse(wtp == -4, -7.12,
+  mutate(wtp = 
+                      ifelse(wtp == -4, -7.12,
                        ifelse(wtp == -3, -5.35, 
                               ifelse(wtp == -2, -3.56,
                                       ifelse(wtp == -1, -2.14, 
@@ -119,10 +120,11 @@ bind_ind <- bind %>%
                                                     ifelse(wtp == 1, 2.14, 
                                                            ifelse(wtp == 2, 3.56, 
                                                                   ifelse(wtp == 3, 5.35, 7.12)))))))))
-
+#ifelse(wtp == -5, -100,
 bind_mex <- bind %>% 
   filter(country =="MEX") %>% 
-  mutate(wtp = ifelse(wtp == -4, -7.75,
+  mutate(wtp =
+                    ifelse(wtp == -4, -7.75,
                        ifelse(wtp == -3, -5.17, 
                               ifelse(wtp == -2, -3.62,
                                       ifelse(wtp == -1, -2.07, 
@@ -419,9 +421,13 @@ Prep data for interval regression
 # wtp_3 = $5.17
 # wtp_4 = $7.75
 
+
+#wtp == -100, -7.75,
+
 bind_interval_mex <- bind_log_final %>% 
   filter(country == "MEX") %>%
-  mutate(wtp_upper = ifelse(wtp == -7.75, -5.17, 
+  mutate(wtp_upper = 
+                    ifelse(wtp == -7.75, -5.17, 
                        ifelse(wtp == -5.17, -3.62,
                               ifelse(wtp == -3.62, -2.07,
                                       ifelse(wtp == -2.07, 0,
@@ -430,10 +436,10 @@ bind_interval_mex <- bind_log_final %>%
                                                            ifelse(wtp == 3.62, 5.17,
                                                                   ifelse(wtp == 5.17, 7.75, 13.33))))))))) ## chose 13.33 as the upper bound because this is two cell phone bill increments higher than 7.75
                                                                         
-                                                                         
+#ifelse(wtp == -100, -7.12,                                                                       
  bind_interval_ind <- bind_log_final %>%
        filter(country == "IND") %>%
-   mutate(wtp_upper =
+   mutate(wtp_upper = 
           ifelse(wtp == -7.12, -5.35,
             ifelse(wtp == -5.35, -3.56, 
               ifelse(wtp == -3.56, -2.14,
@@ -502,7 +508,7 @@ summary(int_13, cluster = c("community"))
 int_15 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
 summary(int_15, cluster = c("community"))
 
-int_16 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education + gdp_prop, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
+dint_16 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education + gdp_prop, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
 summary(int_16, cluster = c("community"))
 
 #save(int_15, file = "output/int_15.rda")
