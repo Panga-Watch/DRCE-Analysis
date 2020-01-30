@@ -765,6 +765,9 @@ DT::datatable(standard_predictions_data)
 
 # BLR including WTP
 ```{r}
+
+survey <- read_csv("raw/master_survey_resp.csv")
+
 #data formatting 
 choice<- read.csv("raw/version_to_package.csv", stringsAsFactors = TRUE) %>% 
   rename(survey_version = 1)
@@ -776,7 +779,7 @@ choice_package<-choice %>%
   left_join(packages) %>% 
   mutate(choice = ifelse(package <=16,1,2))
 
-survey <- read_csv("raw/master_survey_resp.csv")
+
 
  
 
@@ -831,8 +834,56 @@ wtp_3 = $5.17
 wtp_4 = $7.75
 
 ```{r}
-wtp_USD<-data.frame("level"=0:4,  "USD" = c(0,2.07, 3.56, 5.17, 7.12))
+usd_ind<-data.frame("wtp"=c(0:4,-1:-4),  "country" = "IND", "USD" = c(0, 2.14, 3.56, 5.35, 7.12, -2.14, -3.56, -5.35, -7.12))
 
+usd_mex<-data.frame("wtp"=c(0:4,-1:-4),  "country" = "MEX", "USD" = c(0, 2.07, 3.62, 5.17, 7.75, -2.07, -3.62, -5.17, -7.75))
+
+usd<-rbind(usd_ind, usd_mex)
+
+
+
+survey <- read_csv("raw/master_survey_resp.csv") 
+
+wtp_n_usd<- survey %>% 
+  select(survey_id, starts_with("wtp_"), starts_with("wtr_"), country) %>% 
+  mutate(wtp = ifelse(wtp_1 == "n", 0,
+                      ifelse(wtp_2 == "n", 1,
+                             ifelse(wtp_3 == "n", 2,
+                                    ifelse(wtp_4 == "n", 3, 
+                                           ifelse(wtp_4 == "y", 4, NA)))))) %>% 
+  mutate(wtr = ifelse(wtr_1== "y", -1,
+                      ifelse(wtr_2== "y", -2,
+                             ifelse(wtr_3=="y", -3,
+                                    ifelse(wtr_4=="y", -4, -5))))) %>% 
+  select(survey_id, country, wtp, wtr) %>% 
+  gather(key = "cat", value = "wtp", -survey_id, -country, na.rm = TRUE) %>% 
+  select(survey_id, country, wtp) %>% 
+  left_join(usd)
+
+#number of fishers in +, 0, -, protest category. 
+
+four_cat<-wtp_n_usd %>% 
+  mutate(category = ifelse(wtp== -5, "protest", 
+                           ifelse(wtp == 0, "zero", 
+                                  ifelse(wtp>0, "pay", "receive")))) %>% 
+  group_by(category) %>% 
+  tally() %>% 
+  ungroup()
+
+ggplot(four_cat, aes(x=category, y = n)) +
+  geom_col()
+
+```
+
+
+#code for probability of yes vs. wtp
+
+```{r}
+
+
+survey <- read_csv("raw/master_survey_resp.csv") 
+
+wtp_USD<-data.frame("level"=0:4,  "USD" = c(0, 2.07, 3.56, 5.17, 7.12))
 wtr_USD<-data.frame("level"=-1:-4,  "USD" = c(-2.07, -3.56, -5.17, -7.12))
 
 USD<-rbind(wtp_USD, wtr_USD)
@@ -846,15 +897,14 @@ usd2<-USD %>%
 library(DCchoice)
 ahelp(DCchoice)
 
-survey <- read_csv("raw/master_survey_resp.csv") 
 
 pack_yes<- survey %>% 
-  select(survey_id, starts_with("wtp_"), starts_with("wtr_")) %>% 
+  select(survey_id, starts_with("wtp_"), starts_with("wtr_"), country) %>% 
   mutate(wtp = ifelse(wtp_1 == "n", 0,
                       ifelse(wtp_2 == "n", 1,
                              ifelse(wtp_3 == "n", 2,
                                     ifelse(wtp_4 == "n", 3, 
-                                           ifelse(wtp_4 == "y", 4, "NA")))))) %>% 
+                                           ifelse(wtp_4 == "y", 4, NA)))))) %>% 
   mutate(wtr = ifelse(wtr_1== "y", -1,
                       ifelse(wtr_2== "y", -2,
                              ifelse(wtr_3=="y", -3,
@@ -917,8 +967,9 @@ set.seed(123)
 bootCI(NPdb)
 
 # DBDC model
-plot(NPdb, las = 1, xlab = "Bid amounts in USD", main = "DBDC model", cex.main = 0.8, 
-    font.main = 4, xlim = c(-10, 10))
+par(mar = c(5.1, 4.1, 4.1, 2.1)) 
+plot(NPdb, las = 1, ylab = "Probability of Selecting Yes", xlab = "Bid amounts in USD", main = "Probability Model for Individual Fisher", cex.main = 1, 
+    font.main = 4, xlim = c(-7.2, 7.2))
 ```
 
 ```{r}
