@@ -47,18 +47,6 @@ Statistics:
  - 8% did not have fishing communication technology on their boat. 
 
 ```{r}
-
-# fishtech_yes <- 1800*0.92
-# fishtech_no <- 1800*0.08
-# 
-# no_formal_edu <- 1800*0.34
-# formal_edu <- 1800*0.63
-# higher_edu <- 1800*0.03
-# 
-# iuu <- 1800
-# 
-# psc_filter <- total_sim_data %>%
-#   filter(rank_one == "iuu", sos == 1, info == 0, own == 1)
 wtpmin <- -5.35
 
 fishtech <- c(0,1)
@@ -92,45 +80,6 @@ psc <- data.frame(
                   rank_one = "iuu",
                   gdp_prop = sample(rep(gdp_prop_PSC, round(1800*gdp_prop_prob_PSC)))
                   )
-
-
-## Try it with the gamma distribution from the paper ##
-
-# ## Check the distribution of gdp_prop in our sample.
-# gdp_prop_distribution <-gdp_prop_PSC_1 %>%
-#   select(gdp_prop) %>%
-#   gather(variable, value)
-# 
-# gdp_prop_distribution %>%
-#  ggplot(aes(x = value, fill = variable)) +
-#     geom_bkde() +
-#     geom_rug() ## Gamma Distribution
-# 
-# 
-# ## 11,090 Mexican Pesos/month = $590.83
-# avg_income <- 590.83*12 #7089.96/year
-# avg_income_lower <- (590.83 - 1000)*12
-# avg_income_higher <- (590.83 + 1000)*12
-# lambda_hat <- avg_income/12000^2
-# alpha_hat <- avg_income^2/12000^2
-# 
-# x.gam <- rgamma(1800, rate = lambda_hat, shape = alpha_hat)
-# 
-# gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX"), start = 2018, end = 2018) %>%
-#   mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>%
-#   rename(c = 1) %>%
-#   select(-c, -year)
-# 
-# gdp_prop_psc_test <- x.gam/gdp_raw$NY.GDP.PCAP.KD
-# hist(gdp_prop_psc_test)
-# 
-# psc <- data.frame(
-#                   fishtech = sample(rep(fishtech, round(1800*psc_prob_fishtech))),
-#                   education = sample(rep(education, round(1800*psc_prob_edu))),
-#                   rank_one = "iuu",
-#                   gdp_prop = gdp_prop_psc_test
-#                   )
-
 
 
 length(psc$fishtech[psc$fishtech ==0]) # this should be 144
@@ -168,21 +117,19 @@ psc_all_packages <- merge(psc, packages)
 ## load in specific model 
 load("output/lm_15.rda")
 load("output/int_15.rda")
-load("output/hicksian.rda")
 
-## If using lm_15 (without gdp_prop), plug in this:
 psc_all_packages_lm15 <- psc_all_packages %>%
   dplyr::select(-gdp_prop)
 
-## If using lm with gdp_prop, plug in psc_all_packages... skip to below this, section labeled "GDP Prop Predictions"
-
 psc_predict <- data.frame(psc_all_packages_lm15, lm_15_wtp = exp(predict(wtp_lm_15, newdata = psc_all_packages)) - 1 + wtpmin, int_15_wtp = predict(int_15, newdata = psc_all_packages)) ## if you want to add predictions from another model, just tack it onto the end. Now we can filter for a technology and make graphs based off of that. 
+
 packages <- read_csv("raw/packages.csv")  %>%
   filter(package <= 16) %>%
   mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
   mutate(own = factor(own))
 
 psc_predict_packages <- left_join(psc_predict, packages) 
+
 #write.csv(psc_predict_packages, "hypo_village_data/PuertoSanCarlos/PuertoSanCarlos_predictions.csv", row.names = FALSE)
 
 ## Make a list of data frames for each package combination. 
@@ -201,56 +148,12 @@ for (i in unique(psc_predict_packages$package)) {
 # read list in to begin making data usable to graph
 load("hypo_village_data/PuertoSanCarlos/psc_predict_by_package.RData")
 
-mean(my_data_psc[[1]]$lm_15_wtp)
 mean(my_data_psc[[1]]$int_15_wtp)
 
 test <- my_data_psc[[1]] ## this is psc with package 1 predictions. Can do the same for all 16 packages.
 
 sim_total <- nrow(my_data_psc[[1]])
 dollar_values <- seq(-3, 8, by = 0.01)
-
-# test_hicksianxx <- psc_predict_packages %>%
-#   filter(package == 1) %>%
-#   merge(dollar_values) %>%
-#   rename("bid" = "y") %>%
-#   select(-lm_15_wtp, -int_15_wtp, -package)
-# 
-# predict_hicksian <- data.frame(test_hicksianxx, predict_prob <- predict(mylogit, newdata = test_hicksianxx, type = "response"))
-# 
-# ggplot(predict_hicksian, aes(x = bid, y = predict_prob)) + 
-#   geom_point()
-
-## Log Model Graph Data ##
-system.time(new_data_log <- lapply(my_data_psc, function(x) {
-  
-  graph_df <- x %>%
-  merge(dollar_values) %>%
-  mutate(opt_in_log = ifelse(lm_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
-  arrange(opt_in_log)
-
-group_df_opt_in <- graph_df %>%
-  group_by(y, opt_in_log) %>%
-  tally() %>%
-  filter(opt_in_log == 1) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt In") %>% ##384 total scenarios
-  ungroup()
-    
-
-group_df_opt_out <- graph_df %>%
-  group_by(y, opt_in_log) %>%
-  tally() %>%
-  filter(opt_in_log == 0) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt Out") %>% ##384 total scenarios
-  ungroup()
-
-log_df <- rbind(group_df_opt_in, group_df_opt_out)
-
-}))
-beep()
-
-save(new_data_log, file="hypo_village_data/PuertoSanCarlos/psc_predict_log_graphdata.RData")
 
 ## Interval Model Graph Data ##
 system.time(new_data_int <- lapply(my_data_psc, function(x) {
@@ -268,43 +171,17 @@ group_df_opt_in <- graph_df %>%
          opt_in_out = "Opt In") %>% ##384 total scenarios
   ungroup()
 
-group_df_opt_out <- graph_df %>%
-  group_by(y, opt_in_int) %>%
-  tally() %>%
-  filter(opt_in_int == 0) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt Out") %>% ##384 total scenarios
-  ungroup()
-
-int_df <- rbind(group_df_opt_in, group_df_opt_out)
   
 }))
 beep()
 
-save(new_data_int, file="hypo_village_data/PuertoSanCarlos/psc_predict_int_graphdata.RData")
+#save(new_data_int, file="hypo_village_data/PuertoSanCarlos/psc_predict_int_graphdata.RData")
 
 ```
 
 ## GRAPHS!
 
 ```{r}
-## plot log log acceptance rate ##
-load(file="hypo_village_data/PuertoSanCarlos/psc_predict_log_graphdata.RData")
-
-# ## Test graph log log 
-# ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
-#   geom_point() +
-#   geom_line() +
-#   labs(x = "Payment to Fisher ($/month)", y = "Percent opt in VMS Program", title = "All Technology and Demographic Combinations") +
-#   theme_bw() +
-#   scale_x_continuous(breaks = seq(-3,8, 1))
-
-log_all <- bind_rows(new_data_log, .id = "package") %>%
-  merge(packages) %>%
-  rename(
-         "opt" = "opt_in_log") %>%
-  mutate(regression_type = "log_log",
-         package = as.integer(package))
 
 ## plot interval regression acceptance rate ##
 load(file="hypo_village_data/PuertoSanCarlos/psc_predict_int_graphdata.RData")
@@ -324,14 +201,6 @@ int_all <- bind_rows(new_data_int, .id = "package") %>%
   mutate(regression_type = "interval",
          package = as.integer(package))
 
-# ## test graph log log 
-# log_all %>% 
-#   filter(package == 1) %>%
-#   ggplot(aes(x = y, y = perc)) +
-#   geom_point() +
-#   geom_line() + 
-#   facet_wrap(~package+opt_in_out)
-
 # ## test graph interval
 # int_all %>% 
 #   filter(package == 1) %>%
@@ -340,7 +209,7 @@ int_all <- bind_rows(new_data_int, .id = "package") %>%
 #   geom_line() + 
 #   facet_wrap(~package+opt_in_out)
 
-PSC_all_predictions <- rbind(log_all, int_all)
+PSC_all_predictions <- int_all
 
 ## graph package 1 for interval regression
 # PSC_all_predictions %>%
@@ -361,262 +230,45 @@ PSC_all_predictions <- rbind(log_all, int_all)
 PSC_all_predictions <- read_csv("hypo_village_data/PuertoSanCarlos/psc_all_predictions_FINAL.csv")
 
 for(i in unique(PSC_all_predictions$package)){
-  for(j in unique(PSC_all_predictions$opt_in_out)){
-    for(m in unique(PSC_all_predictions$regression_type)){
 
-  p <- ggplot(data = filter(PSC_all_predictions, package == i, opt_in_out == j, regression_type == m), aes(x = y, y = perc)) +
+  p <- ggplot(data = filter(PSC_all_predictions, package == i), aes(x = y, y = perc)) +
     geom_point() + 
     geom_line() +
-    labs(title = "Puerto San Carlos", x = "Fisher Payment ($/month)", y = paste("Percent", j, "VMS Program", sep = " "), caption = paste("Package", i)) +
+    labs(title = "Puerto San Carlos", x = "Fisher Payment ($/month)", y = "Percent Opt In VMS Program", caption = paste("Package", i)) +
     theme_classic() +
     scale_x_continuous(breaks = seq(-3,8, 1)) +
     scale_y_continuous(breaks = seq(0,1, 0.1))
 
-  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos/graphs/", m, "_", i, "_", j, ".png"))
+  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos/graphs/", "PSC_interval" ,"_", i, ".png"))
   
-    }
-  }
 }
 
 
 graph_data_psc <- PSC_all_predictions %>%
   filter(opt_in_out == "Opt In", package %in% c(8,11), regression_type == "interval")
+
+# graph_data_psc <- PSC_all_predictions %>%
+#   filter(sos == 1, info == 0, own == 1, opt_in_out == "Opt In", regression_type == "interval")
+# 
+# ggplot(graph_data_psc, aes(x = y, y = perc)) + 
+#     geom_line() +
+#     theme_bw()
+
   
   ggplot(graph_data_psc, aes(x = y, y = perc, color = factor(sos))) + 
     geom_line() +
     theme_bw() +
     labs() +
-    labs(x = "Cost to Fisher ($ per month)", y = "Percentage of Population to Opt In") +
+    labs(x = "Cost to Fisher ($ per month)", y = "Proportion of Population to Opt In") +
     #geom_vline(xintercept = c(0.97, -0.21), linetype = "dotted", color = "darkgreen") +
      #geom_vline(xintercept = c(3.15, 4.41), linetype = "dotted", color = "red") +
         scale_x_continuous(breaks = c(-3,-2, -1, 0, 1, 2, 3, 4, 5, 6)) +
     #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    scale_color_manual(values = c("goldenrod1", "lightseagreen"), name = "SOS Functionality", labels = c("No", "Yes")) 
+    scale_color_manual(values = c("goldenrod1", "lightseagreen"), name = "SOS Functionality", labels = c("No", "Yes")) +
+    scale_y_continuous(breaks = seq(0,1,0.2))
   #caption = "Technology Attributes: Non-anonymous, Public access \n Biggest problem: IUU"
 
 ```
-
-GDP Prop Predictions
-
-```{r}
-## If using lm with gdp_prop, plug in psc_all_packages... skip to below this, section labeled "GDP Prop Predictions"
-
-load("output/wtp_lm_16_gdp_prop.rda")
-load("output/int_16_gdp_prop.rda")
-
-psc_predict <- data.frame(psc_all_packages, lm_16_wtp = exp(predict(wtp_lm_16, newdata = psc_all_packages)) - 1 + wtpmin, int_16_wtp = predict(int_16, newdata = psc_all_packages)) ## if you want to add predictions from another model, just tack it onto the end. Now we can filter for a technology and make graphs based off of that. 
-packages <- read_csv("raw/packages.csv")  %>%
-  filter(package <= 16) %>%
-  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
-  mutate(own = factor(own))
-
-psc_predict_packages <- left_join(psc_predict, packages) 
-
-#write.csv(psc_predict_packages, "hypo_village_data/PuertoSanCarlos_gdp/PuertoSanCarlos_predictions_gdp.csv", row.names = FALSE)
-
-## Make a list of data frames for each package combination. 
-my_data_psc <- list()
-for (i in unique(psc_predict_packages$package)) {
-    my_data_psc[[i]] <- filter(psc_predict_packages, package == i)
-}
-
-#save(my_data_psc, file="hypo_village_data/PuertoSanCarlos_gdp/psc_predict_by_package_gdp.RData") ## save this list to read back in for graphs.
-
-
-```
-
-```{r}
-
-# read list in to begin making data usable to graph
-#load("hypo_village_data/PuertoSanCarlos/psc_predict_by_package.RData")
-
-mean(my_data_psc[[1]]$lm_16_wtp)
-mean(my_data_psc[[1]]$int_16_wtp)
-
-test <- my_data_psc[[1]] ## this is psc with package 1 predictions. Can do the same for all 16 packages.
-
-sim_total <- nrow(my_data_psc[[1]])
-dollar_values <- seq(-3, 8, by = 0.01)
-
-## Log Model Graph Data ##
-system.time(new_data_log <- lapply(my_data_psc, function(x) {
-  
-  graph_df <- x %>%
-  merge(dollar_values) %>%
-  mutate(opt_in_log = ifelse(lm_16_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
-  arrange(opt_in_log)
-
-group_df_opt_in <- graph_df %>%
-  group_by(y, opt_in_log) %>%
-  tally() %>%
-  filter(opt_in_log == 1) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt In") %>% ##384 total scenarios
-  ungroup()
-    
-
-group_df_opt_out <- graph_df %>%
-  group_by(y, opt_in_log) %>%
-  tally() %>%
-  filter(opt_in_log == 0) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt Out") %>% ##384 total scenarios
-  ungroup()
-
-log_df <- rbind(group_df_opt_in, group_df_opt_out)
-
-}))
-beep()
-
-#save(new_data_log, file="hypo_village_data/PuertoSanCarlos_gdp/psc_predict_log_graphdata_gdp.RData")
-
-## Interval Model Graph Data ##
-system.time(new_data_int <- lapply(my_data_psc, function(x) {
-  
-  graph_df <- x %>%
-  merge(dollar_values) %>%
-  mutate(opt_in_int = ifelse(int_16_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
-  arrange(opt_in_int)
-
-group_df_opt_in <- graph_df %>%
-  group_by(y, opt_in_int) %>%
-  tally() %>%
-  filter(opt_in_int == 1) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt In") %>% ##384 total scenarios
-  ungroup()
-
-group_df_opt_out <- graph_df %>%
-  group_by(y, opt_in_int) %>%
-  tally() %>%
-  filter(opt_in_int == 0) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt Out") %>% ##384 total scenarios
-  ungroup()
-
-int_df <- rbind(group_df_opt_in, group_df_opt_out)
-  
-}))
-beep()
-
-#save(new_data_int, file="hypo_village_data/PuertoSanCarlos_gdp/psc_predict_int_graphdata_gdp.RData")
-
-```
-
-## GRAPHS!
-
-```{r}
-## plot log log acceptance rate ##
-load(file="hypo_village_data/PuertoSanCarlos_gdp/psc_predict_log_graphdata_gdp.RData")
-
-# ## Test graph log log 
-# ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
-#   geom_point() +
-#   geom_line() +
-#   labs(x = "Payment to Fisher ($/month)", y = "Percent opt in VMS Program", title = "All Technology and Demographic Combinations") +
-#   theme_bw() +
-#   scale_x_continuous(breaks = seq(-3,8, 1))
-
-log_all <- bind_rows(new_data_log, .id = "package") %>%
-  merge(packages) %>%
-  rename(
-         "opt" = "opt_in_log") %>%
-  mutate(regression_type = "log_log",
-         package = as.integer(package))
-
-## plot interval regression acceptance rate ##
-load(file="hypo_village_data/PuertoSanCarlos_gdp/psc_predict_int_graphdata_gdp.RData")
-
-# ## Test graph interval
-# ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
-#   geom_point() +
-#   geom_line() +
-#   labs(x = "Fisher Payment ($/month)", y = "Percent opt in VMS Program", title = "Package 7 Puerto San Carlos") +
-#   theme_bw() +
-#   scale_x_continuous(breaks = seq(-3,8, 1))
-
-int_all <- bind_rows(new_data_int, .id = "package") %>%
-  merge(packages) %>%
-  rename(
-         "opt" = "opt_in_int") %>%
-  mutate(regression_type = "interval",
-         package = as.integer(package))
-
-# ## test graph log log 
-# log_all %>% 
-#   filter(package == 1) %>%
-#   ggplot(aes(x = y, y = perc)) +
-#   geom_point() +
-#   geom_line() + 
-#   facet_wrap(~package+opt_in_out)
-
-# ## test graph interval
-# int_all %>% 
-#   filter(package == 1) %>%
-#   ggplot(aes(x = y, y = perc)) +
-#   geom_point() +
-#   geom_line() + 
-#   facet_wrap(~package+opt_in_out)
-
-PSC_all_predictions <- rbind(log_all, int_all)
-
-## graph package 1 for interval regression
-# PSC_all_predictions %>%
-#   filter(package == 1, regression_type == "interval") %>%
-#   ggplot(aes(x = y, y = perc)) +
-#   geom_point() +
-#   geom_line() +
-#   facet_wrap(~package+opt_in_out)
-## it works.
-
-## Save the final dataframe
-
-#write.csv(PSC_all_predictions, "hypo_village_data/PuertoSanCarlos_gdp/psc_all_predictions_FINAL_gdp.csv", row.names = FALSE)
-
-## save all of the graphs 
-
-
-PSC_all_predictions <- read_csv("hypo_village_data/PuertoSanCarlos_gdp/psc_all_predictions_FINAL_gdp.csv")
-
-for(i in unique(PSC_all_predictions$package)){
-  for(j in unique(PSC_all_predictions$opt_in_out)){
-    for(m in unique(PSC_all_predictions$regression_type)){
-
-  p <- ggplot(data = filter(PSC_all_predictions, package == i, opt_in_out == j, regression_type == m), aes(x = y, y = perc)) +
-    geom_line() +
-    geom_point() +
-    labs(title = "Puerto San Carlos", x = "Fisher Payment ($/month)", y = paste("Percent", j, "VMS Program", sep = " "), caption = paste("Package", i)) +
-    theme_classic() +
-    scale_x_continuous(breaks = seq(-3,8, 1)) +
-    scale_y_continuous(breaks = seq(0,1, 0.1))
-
-  save_plot(p, file = paste0("hypo_village_data/PuertoSanCarlos_gdp/graphs/", m, "_", i, "_", j, ".png"))
-  
-    }
-  }
-}
-
-```
-
-```{r}
-
-
-try_psc<-psc_predict %>% 
-  left_join(packages) %>% 
-  #filter(regression_type == "interval") %>% 
-  group_by(package, int_16_wtp) %>% 
-  tally() %>% 
- # ungroup() %>% 
-  mutate(prop=n/sum(n)) %>% 
-  arrange(desc(int_16_wtp)) %>% 
-  mutate(prop_sum = cumsum(prop)) 
-
-
-ggplot(try_psc, aes(x= int_16_wtp)) +
-  geom_smooth(aes(y=prop_sum, color=as.factor(package), fill = as.factor(package)), se = FALSE)
-```
-
-
 
 Pepela Indonesia
 Paper: 
@@ -717,45 +369,12 @@ ggplot(try_p, aes(x= int_15_wtp)) +
 # read list in to begin making data usable to graph
 load("hypo_village_data/Pepela/pepela_predict_by_package.RData")
 
-mean(my_data_pepela[[1]]$lm_15_wtp)
 mean(my_data_pepela[[1]]$int_15_wtp)
 
 test <- my_data_pepela[[1]] ## this is psc with package 1 predictions. Can do the same for all 16 packages.
 
 sim_total <- nrow(my_data_pepela[[1]])
 dollar_values <- seq(-3, 8, by = 0.01)
-
-## Log Model Graph Data ##
-system.time(new_data_log <- lapply(my_data_pepela, function(x) {
-  
-  graph_df <- x %>%
-  merge(dollar_values) %>%
-  mutate(opt_in_log = ifelse(lm_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
-  arrange(opt_in_log)
-
-group_df_opt_in <- graph_df %>%
-  group_by(y, opt_in_log) %>%
-  tally() %>%
-  filter(opt_in_log == 1) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt In") %>% ##384 total scenarios
-  ungroup()
-    
-
-group_df_opt_out <- graph_df %>%
-  group_by(y, opt_in_log) %>%
-  tally() %>%
-  filter(opt_in_log == 0) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt Out") %>% ##384 total scenarios
-  ungroup()
-
-log_df <- rbind(group_df_opt_in, group_df_opt_out)
-
-}))
-beep()
-
-#save(new_data_log, file="hypo_village_data/Pepela/pepela_predict_log_graphdata.RData")
 
 ## Interval Model Graph Data ##
 system.time(new_data_int <- lapply(my_data_pepela, function(x) {
@@ -773,43 +392,16 @@ group_df_opt_in <- graph_df %>%
          opt_in_out = "Opt In") %>% ##384 total scenarios
   ungroup()
 
-group_df_opt_out <- graph_df %>%
-  group_by(y, opt_in_int) %>%
-  tally() %>%
-  filter(opt_in_int == 0) %>% ## filter for all opt ins...
-  mutate(perc = n/sim_total,
-         opt_in_out = "Opt Out") %>% ##384 total scenarios
-  ungroup()
-
-int_df <- rbind(group_df_opt_in, group_df_opt_out)
-  
 }))
 beep()
 
-#save(new_data_int, file="hypo_village_data/Pepela/pepela_predict_int_graphdata.RData")
+save(new_data_int, file="hypo_village_data/Pepela/pepela_predict_int_graphdata.RData")
 
 ```
 
 ## GRAPHS!
 
 ```{r}
-## plot log log acceptance rate ##
-load(file="hypo_village_data/Pepela/pepela_predict_log_graphdata.RData")
-
-# ## Test graph log log 
-# ggplot(new_data_log[[7]], aes(x = y, y = perc_opt_in_log)) +
-#   geom_point() +
-#   geom_line() +
-#   labs(x = "Payment to Fisher ($/month)", y = "Percent opt in VMS Program", title = "All Technology and Demographic Combinations") +
-#   theme_bw() +
-#   scale_x_continuous(breaks = seq(-3,8, 1))
-
-log_all <- bind_rows(new_data_log, .id = "package") %>%
-  merge(packages) %>%
-  rename(
-         "opt" = "opt_in_log") %>%
-  mutate(regression_type = "log_log",
-         package = as.integer(package))
 
 ## plot interval regression acceptance rate ##
 load(file="hypo_village_data/Pepela/pepela_predict_int_graphdata.RData")
@@ -829,14 +421,6 @@ int_all <- bind_rows(new_data_int, .id = "package") %>%
   mutate(regression_type = "interval",
          package = as.integer(package))
 
-# ## test graph log log 
-# log_all %>% 
-#   filter(package == 1) %>%
-#   ggplot(aes(x = y, y = perc)) +
-#   geom_point() +
-#   geom_line() + 
-#   facet_wrap(~package+opt_in_out)
-
 # ## test graph interval
 # int_all %>% 
 #   filter(package == 1) %>%
@@ -845,7 +429,7 @@ int_all <- bind_rows(new_data_int, .id = "package") %>%
 #   geom_line() + 
 #   facet_wrap(~package+opt_in_out)
 
-Pepela_all_predictions <- rbind(log_all, int_all)
+Pepela_all_predictions <- int_all
 
 ## graph package 1 for interval regression
 # PSC_all_predictions %>%
@@ -866,21 +450,16 @@ Pepela_all_predictions <- rbind(log_all, int_all)
 Pepela_all_predictions <- read_csv("hypo_village_data/Pepela/pepela_all_predictions_FINAL.csv")
 
 for(i in unique(Pepela_all_predictions$package)){
-  for(j in unique(Pepela_all_predictions$opt_in_out)){
-    for(m in unique(Pepela_all_predictions$regression_type)){
 
-  p <- ggplot(data = filter(Pepela_all_predictions, package == i, opt_in_out == j, regression_type == m), aes(x = y, y = perc)) +
+  p <- ggplot(data = filter(Pepela_all_predictions, package == i), aes(x = y, y = perc)) +
     geom_point() + 
     geom_line() +
-    labs(title = "Pepela", x = "Fisher Payment ($/month)", y = paste("Percent", j, "VMS Program", sep = " "), caption = paste("Package", i)) +
+    labs(title = "Pepela", x = "Fisher Payment ($/month)", y = "Percent Opt In VMS Program", caption = paste("Package", i)) +
     theme_classic() +
     scale_x_continuous(breaks = seq(-3,8, 1)) +
     scale_y_continuous(breaks = seq(0,1, 0.1))
 
-  save_plot(p, file = paste0("hypo_village_data/Pepela/graphs/", m, "_", i, "_", j, ".png"))
-  
-    }
-  }
+  save_plot(p, file = paste0("hypo_village_data/Pepela/graphs/",  "Pepela_interval_", i, ".png"))
 }
 
 graph_data_pepela <- Pepela_all_predictions %>%
@@ -890,12 +469,13 @@ graph_data_pepela <- Pepela_all_predictions %>%
     geom_line() +
     theme_bw() +
     #labs(caption = "Non-anonymous, Public access") +
-    labs(x = "Cost to Fisher ($ per month)", y = "Percentage of Population to Opt In") +
+    labs(x = "Cost to Fisher ($ per month)", y = "Proportion of Population to Opt In") +
     #geom_vline(xintercept = c(-1.88, -0.61), linetype = "dotted", color = "darkgreen") +
      #geom_vline(xintercept = c(3.15, 4.41), linetype = "dotted", color = "red") +
         scale_x_continuous(breaks = c(-3,-2, -1, 0, 1, 2,3 ,4)) +
     #theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    scale_color_manual(values = c("goldenrod1", "lightseagreen"), name = "SOS Functionality", labels = c("No", "Yes")) 
+    scale_color_manual(values = c("goldenrod1", "lightseagreen"), name = "SOS Functionality", labels = c("No", "Yes"))  +
+    scale_y_continuous(breaks = seq(0,1, 0.2))
        # scale_color_discrete(name = "SOS Functionality", labels = c("No", "Yes")) 
 
 ```
