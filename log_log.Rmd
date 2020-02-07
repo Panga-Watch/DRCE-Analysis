@@ -6,10 +6,6 @@ output:
     df_print: paged
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
-
 ```{r}
 library(tidyverse)
 library(ggfortify)
@@ -508,7 +504,7 @@ summary(int_13, cluster = c("community"))
 int_15 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
 summary(int_15, cluster = c("community"))
 
-dint_16 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education + gdp_prop, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
+int_16 <- survreg(intervals ~ sos + info + own + rank_one + fishtech + education + gdp_prop, data = bind_interval_final, dist = "gaussian") ## normal distribution... WTP does look normal
 summary(int_16, cluster = c("community"))
 
 #save(int_15, file = "output/int_15.rda")
