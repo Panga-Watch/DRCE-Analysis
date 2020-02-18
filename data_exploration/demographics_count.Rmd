@@ -23,15 +23,15 @@ theme_set(theme_pubr())
 
 ```{r, include=FALSE}
 # Read in all of the raw data
-survey <- read_csv("raw/master_survey_resp.csv")
+survey <- read_csv("C:/Users/me/Desktop/DRCE-Analysis/raw/master_survey_resp.csv")
 
 
-header_key <- read_csv("raw/survey_header_key.csv")
+header_key <- read_csv("C:/Users/me/Desktop/DRCE-Analysis/raw/survey_header_key.csv")
 
-choice_key <- read_csv("raw/choice_key.csv") %>% 
+choice_key <- read_csv("C:/Users/me/Desktop/DRCE-Analysis/raw/choice_key.csv") %>% 
   rename(question = 1)
 
-choice_value<- read_csv("raw/choice_value_key.csv") %>% 
+choice_value<- read_csv("C:/Users/me/Desktop/DRCE-Analysis/raw/choice_value_key.csv") %>% 
   rename(column_header = 1)
 
 #clean choice key for relevant columns in analysis 
@@ -199,7 +199,7 @@ q4_sum %>%
   kable() %>% 
   kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
 
-ggplot(q4_sum, aes(x = reorder(Gear, -Count), y = Count, fill = wtp)) +
+ggplot(q4_sum, aes(x = reorder(Gear, -Count), y = Count)) +
   geom_bar(stat = "identity") +
   xlab("Gear")+
   theme_classic()
@@ -208,11 +208,10 @@ ggplot(q4_sum, aes(x = reorder(Gear, -Count), y = Count, fill = wtp)) +
 q4_plot<-q4 %>% 
   gather(gear,count, 1:8) %>% 
   filter(count == 1) %>% 
-  mutate(gear=as.factor(gear)) %>% 
-  mutate(wtp=as.factor(wtp))
+  mutate(gear=as.factor(gear)) 
 
 ggplot(q4_plot, aes(x=gear)) +
-  geom_bar(aes(fill=wtp), width = 0.5)
+  geom_bar(width = 0.5)
 ```
 
 Other  
@@ -1301,4 +1300,113 @@ data("Electricity", package = "mlogit")
 
 Electr <- mlogit.data(Electricity, id="id", choice="choice", varying=3:26, shape="wide", sep="")
 
+```
+
+
+
+#code for probability of yes vs. wtp
+
+```{r}
+
+
+survey <- read_csv("raw/master_survey_resp.csv") 
+
+wtp_USD<-data.frame("level"=0:4,  "USD" = c(0, 2.07, 3.56, 5.17, 7.12))
+wtr_USD<-data.frame("level"=-1:-4,  "USD" = c(-2.07, -3.56, -5.17, -7.12))
+
+USD<-rbind(wtp_USD, wtr_USD)
+
+usd1<-USD %>% 
+  mutate(bid1=level)
+
+usd2<-USD %>% 
+  mutate(bid2=level)
+
+library(DCchoice)
+ahelp(DCchoice)
+
+
+pack_yes<- survey %>% 
+  select(survey_id, starts_with("wtp_"), starts_with("wtr_"), country) %>% 
+  mutate(wtp = ifelse(wtp_1 == "n", 0,
+                      ifelse(wtp_2 == "n", 1,
+                             ifelse(wtp_3 == "n", 2,
+                                    ifelse(wtp_4 == "n", 3, 
+                                           ifelse(wtp_4 == "y", 4, NA)))))) %>% 
+  mutate(wtr = ifelse(wtr_1== "y", -1,
+                      ifelse(wtr_2== "y", -2,
+                             ifelse(wtr_3=="y", -3,
+                                    ifelse(wtr_4=="y", -4, -5)))))
+
+yn<-pack_yes %>% 
+  filter(wtp!=4) %>% 
+  select(survey_id, wtp) %>%
+  mutate(wtp=as.integer(wtp)) %>% 
+  mutate(R1=1, R2=0, bid1=wtp, bid2=wtp+1) %>% 
+  select(-wtp)
+
+yy<-pack_yes %>% 
+  filter(wtp==4) %>% 
+  select(survey_id, wtp) %>%
+  mutate(wtp=as.integer(wtp)) %>% 
+  mutate(R1=1, R2=1, bid1=wtp-1, bid2=wtp) %>% 
+  select(-wtp)
+
+ny<-pack_yes %>% 
+  filter(wtr!=-5) %>% 
+  select(survey_id, wtr) %>%
+  mutate(wtr=as.integer(wtr)) %>% 
+  mutate(R1=0, R2=1, bid1=wtr+1, bid2=wtr) %>% 
+  select(-wtr)
+
+nn<-pack_yes %>% 
+  filter(wtr==-5) %>% 
+  select(survey_id, wtr) %>%
+  mutate(wtr=as.integer(wtr)) %>% 
+  mutate(R1=0, R2=0, bid1=wtr+2, bid2=wtr+1) %>% 
+  select(-wtr)
+
+dchoice<-bind_rows(yn, yy, ny, nn)
+
+dc_usd<-dchoice %>% 
+  left_join(usd1, by="bid1") %>% 
+  left_join(usd2, by="bid2") %>% 
+  mutate(bid1=USD.x, bid2=USD.y) %>% 
+  select(survey_id, bid1, bid2, R1, R2)
+
+dc_package<-survey %>% 
+  select(survey_id, survey_version, choice) %>% 
+  left_join(choice_package) %>% 
+  right_join(dc_usd) %>% 
+  select(-survey_version, -choice, -package) %>% 
+  mutate(sos=sos-1) %>% 
+  mutate(info=-(info-2)) %>% 
+  mutate(own=as.factor(own))
+
+fmdb <- R1 + R2 ~ sos + info + own | bid1+bid2
+
+NPdb <- dbchoice(fmdb, data = dc_package, dist = "logistic")
+
+summary(NPdb)
+
+
+# The Bootstrap method
+set.seed(123) 
+bootCI(NPdb)
+
+# DBDC model
+par(mar = c(5.1, 4.1, 4.1, 2.1)) 
+plot(NPdb, las = 1, ylab = "Probability of Selecting Yes", xlab = "Bid amounts in USD", main = "Probability Model for Individual Fisher", cex.main = 1, 
+    font.main = 4, xlim = c(-7.2, 7.2))
+```
+
+```{r}
+install.packages("DCchoice",
+repos = c("@CRAN@", "http://www.bioconductor.org/packages/release/bioc"),
+dep = TRUE)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Icens")
 ```
