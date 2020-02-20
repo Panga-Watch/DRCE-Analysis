@@ -324,6 +324,55 @@ write.csv(forced_data_final, "int/forced_data_fix.csv", row.names = FALSE)
 forced_data_final <- read_csv("int/forced_data_fix.csv")
 ```
 
+```{r}
+## try to incorporate wtp/wtr... a work in progress. 
+master_surv_resp <- read_csv("raw/master_survey_resp.csv")
+version_to_package <- read_csv("raw/version_to_package.csv")
+packages <- read_csv("raw/packages.csv")
+
+#standard WTP
+standard_opt_out <- read_csv("int/standard_opt_out_fix.csv")
+
+wtp_wtr_raw <- master_surv_resp %>% 
+  select(survey_id, country, package_nopackage,  wtp_1, wtp_2, wtp_3, wtp_4, wtr_1, wtr_2, wtr_3, wtr_4)
+
+standard_join_wtp <- standard_opt_out %>%
+  left_join(wtp_wtr_raw) %>%
+  filter(RES == 1) %>%
+  select(-package_nopackage, -wtr_1, -wtr_2, -wtr_3, -wtr_4) %>%
+  mutate(wtp_1 = ifelse(!is.na(wtp_1) & (wtp_1 == "y"|wtp_1 == "yes"), 5, wtp_1),
+        wtp_2 = ifelse(!is.na(wtp_2) & (wtp_2 == "y"|wtp_2 == "yes"), 10, wtp_2),
+        wtp_3 = ifelse(!is.na(wtp_3) &(wtp_3 == "y"|wtp_3 == "yes"), 15, wtp_3), 
+        wtp_4 = ifelse(!is.na(wtp_4) & (wtp_4 == "y"|wtp_4 == "yes"), 20, wtp_4)) %>%
+   mutate(wtp_1 = ifelse(wtp_1 == "n" &is.na(wtp_2)&is.na(wtp_3)&is.na(wtp_4)  , 0, wtp_1)) %>%
+    mutate(wtp_1 = ifelse( wtp_1 == "n", NA, wtp_1),
+        wtp_2 = ifelse(wtp_2 == "n", NA, wtp_2),
+        wtp_3 = ifelse(wtp_3 == "n", NA, wtp_3), 
+        wtp_4 = ifelse(wtp_4 == "n", NA, wtp_4)) %>%
+  mutate(wtp_1 = ifelse(is.na(wtp_1) &is.na(wtp_2)&is.na(wtp_3)&is.na(wtp_4)  , 0, wtp_1)) %>%
+  mutate(wtp = case_when(
+    !is.na(wtp_4) ~ wtp_4,
+    is.na(wtp_4) & !is.na(wtp_3) ~ wtp_3, 
+    is.na(wtp_4) & is.na(wtp_3) & !is.na(wtp_2) ~ wtp_2,
+    is.na(wtp_4) & is.na(wtp_3) & is.na(wtp_2) & !is.na(wtp_1) ~ wtp_1)
+    ) %>%
+  select(survey_id, country, package, wtp, sos, info, own, own.fisher, own.industry, own.gov, own.public, STR, RES, ASC, noalt) %>%
+  mutate(wtp = as.numeric(wtp))
+
+wtp_opt_out <- standard_opt_out %>%
+  filter(RES == 0) %>%
+  mutate(wtp = 0)
+
+  
+standard_wtp <- full_join(standard_join_wtp, wtp_opt_out) 
+
+standard_wtp_final <- standard_wtp %>%
+    mutate(sos = as.factor(sos), info = as.factor(info), own = as.factor(own), own.fisher = as.factor(own.fisher), own.industry = as.factor(own.industry), own.gov = as.factor(own.gov), own.public = as.factor(own.public)) %>%
+  arrange(survey_id)
+
+write.csv(standard_wtp_final, "int/standard_opt_out_wtp.csv", row.names = FALSE)
+```
+
 #removing columns that are not used for analysis
 ```{r}
 ms_factor<-read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE)
@@ -351,4 +400,33 @@ ce_followup<-variables %>%
   mutate(weight = round((3/count), digits = 2))
 ```
 
+#Question 18. 
+
+```{r}
+#Example of how to use q18. If GFW is hoping to increase adoption with the following characteristics, try incorporating the following benefits into the tracking package.
+
+library(janitor)
+
+q18<-variables %>% 
+  filter(fishing_organization == "y") %>% 
+  filter(country == "MEX") %>% 
+  filter(boat_length_m <=7) %>% 
+  select(starts_with("design")) %>% 
+  colSums()
+
+#design a(30), g(25), i(14) have the highest counts.  
+#a = Data to help obtain a sustainable seafood certification
+#g = Reduce illegal, unreported, and unregulated fishing in your fishing area
+#i = Full data reports to show compliance with fishing authorities (e.g. monthly reports with fishing activity information, paired with catch data)
+```
+
+```{r}
+q18_total<-variables %>% 
+  select(starts_with("design")) %>% 
+  na.omit() %>% 
+  colSums() %>% 
+  as.data.frame() %>% 
+  clean_names() 
+
+```
 

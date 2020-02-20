@@ -1,0 +1,816 @@
+---
+title: "Analysis"
+author: "*Compiled on `r date()` by `r Sys.info()['user']`*"
+output: 
+  html_document:
+    toc: true
+    toc_float: yes
+    number_sections: true
+    theme: cerulean
+    highlight: haddock
+    includes: 
+  pdf_document:
+    toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+## Summary
+Mixed Logit Analysis on the DRCE conducted in Indonesia and Mexico. Split into four different models; Standard opt-out model (Model I), Pooled (Model II), Unforced Responses (Model III), and Forced Responses (Model IV).
+
+## Data Source 
+Personal Interviews
+ 
+## Reference 
+Panga Watch
+ 
+## Downloaded
+September 30, 2019
+ 
+Time range: 
+2019
+ 
+## Format
+comma separated values
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(survival)
+library(AlgDesign)
+library(DT)
+library(stargazer)
+library(xtable)
+library(here)
+library(kableExtra)
+
+master_survey <- read.csv("raw/master_survey_resp.csv", stringsAsFactors = TRUE) %>%
+  select(-start, -end, -survey_type, -interviewer, -comment, -text_vms_adoption, -fishery_problem_one, -fishery_problem_two, -fishery_problem_three, -fishery_solution_one, -fishery_solution_two, -fishery_solution_three, -photo)
+```
+
+## Standard opt-out model (Model I)
+```{r}
+standard_opt_out <- read_csv("int/standard_opt_out_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
+
+standard_clogit <- clogit(RES~ASC+sos+info+own.fisher+own.industry+own.gov + strata(survey_version), data=standard_opt_out) # run the clogit. ASC represents the alternative specific constant, or the opt out option.
+summary(standard_clogit)
+
+
+```
+
+## Extrapolate predictions using standard clogit model
+```{r}
+standard_predictions <- predict(standard_clogit, newdata = standard_opt_out, type = "risk", se.fit = TRUE)
+
+standard_predictions_data <- data.frame(standard_opt_out, standard_predictions) %>%
+  select(STR, package, info, sos, own, RES, fit, se.fit)
+
+#reasoning for predicting out a clogit model:
+#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+
+# sos	0 = no, 1 = yes
+# info 	1= non, 0 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+standard_predictions_data_final <- standard_predictions_data %>%
+  mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-`probability (%)`) %>%
+  select(package, info, own, sos, `probability (%)`, level_se) %>%
+  group_by(package, info, own, sos) %>%
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se))  %>%
+  ungroup() %>%
+  mutate(info = case_when(
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
+  ),
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry",
+   own == 3 ~ "Government",
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
+  )) %>%
+  arrange(-`probability (%)`)
+
+
+write.csv(standard_predictions_data_final, "output/standard_probs.csv", row.names = FALSE)
+
+DT::datatable(standard_predictions_data)
+
+```
+
+
+
+## Pooled (Model II)
+```{r}
+pooled <- read_csv("int/pooled_data_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt) %>%
+  mutate(own = as.factor(own))
+
+pooled <- within(pooled, own <- relevel(own, ref = 1))
+
+# pooled_clogit<-clogit(RES~sos+info+ own + strata(STR), data=pooled)
+# summary(pooled_clogit)
+
+pooled_clogit<-clogit(RES~sos+info+  own.fisher + own.industry  + own.gov + strata(STR), data=pooled)
+summary(pooled_clogit)
+
+```
+
+```{r}
+# make the graphs for actual preference weights
+
+sos_coef <- pooled_clogit$coefficients[1]
+info_coef <- pooled_clogit$coefficients[2]
+own_1_coef <- pooled_clogit$coefficients[3]
+own_2_coef <- pooled_clogit$coefficients[4]
+own_3_coef <- pooled_clogit$coefficients[5]
+
+pooled_clogit_coefs <- data.frame(names = names(pooled_clogit$coefficients), clogit_coef = pooled_clogit$coefficients)
+
+avg_own <- (own_1_coef + own_2_coef + own_3_coef)/4
+avg_info <- (info_coef)/2
+avg_sos <- sos_coef/2
+
+sos_actual <- pooled_clogit_coefs %>%
+  filter(names == "sos") %>%
+  mutate(actual = clogit_coef - avg_sos)
+
+sos0_actual <- data.frame(names = "sos0", 0, actual = -sum(sos_actual$actual)) %>%
+  rename("clogit_coef" = "X0")
+
+sos_actual_final <- rbind(sos_actual, sos0_actual)
+
+sos_actual_final <- rbind(sos_actual, sos0_actual)
+
+info_actual <- pooled_clogit_coefs %>%
+  filter(names == "info") %>%
+  mutate(actual = clogit_coef - avg_info)
+
+info0_actual <- data.frame(names = "info0", 0, actual = -sum(info_actual$actual)) %>%
+  rename("clogit_coef" = "X0")
+
+info_actual_final <- rbind(info_actual, info0_actual)
+
+own_actual <- pooled_clogit_coefs %>%
+  filter(str_detect(names, 'own') ) %>%
+  mutate(actual = clogit_coef - avg_own)
+
+own4_actual <- data.frame(names = "own.public",  0, actual =-sum(own_actual$actual)) %>%
+  rename("clogit_coef" = "X0")
+
+own_actual_final <- rbind(own_actual, own4_actual)
+
+all_actual <- rbind(sos_actual_final, info_actual_final, own_actual_final) %>% 
+  select(-clogit_coef)
+write.csv(all_actual, "output/pooled_clogit_actual_coefs.csv", row.names = FALSE)
+
+all_actual <- read_csv("output/pooled_clogit_actual_coefs.csv")
+
+positions <- c("sos", "sos0", "info", "info0", "own.fisher", "own.industry", "own.gov", "own.public")
+
+all_actual %>%
+  ggplot(aes(x= names, y= actual)) +
+  geom_col() + 
+  theme_bw() +
+  scale_x_discrete(limits = positions) +
+  scale_y_continuous(breaks = seq(-1.3, 1.3, 0.1)) %>%
+  labs(y = "Preference Weights")
+
+```
+
+Unforced Responses (Model III)
+```{r}
+unforced <- read_csv("int/unforced_data_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
+
+unforced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+strata(STR), data=unforced)
+unforced_clogit
+```
+
+Forced Responses (Model IV)
+```{r}
+forced <- read_csv("int/forced_data_fix.csv") %>%
+  left_join(master_survey, by = "survey_id") %>%
+  select(-noalt)
+
+forced_clogit<-clogit(RES~sos+info+own.fisher+own.industry+own.gov+own.public+strata(STR), data=forced)
+forced_clogit
+```
+
+
+**Likelihood Ratio Test Taken from Penn et al.**
+```{r}
+#K = 5
+#M = 2
+
+pooled_log <- logLik(pooled_clogit) #-74.11078 (df=5)
+unforced_log <- logLik(unforced_clogit) #-42.90397 (df=5)
+forced_log <- logLik(forced_clogit) #-22.24721 (df=5)
+
+-2*(logLik(pooled_clogit) - (logLik(unforced_clogit) + logLik(forced_clogit)))
+-2*(pooled_log- (unforced_log + forced_log))
+
+-2*(74.11078 - (42.90397 + 22.24721)) #17.9192
+# if this then 17.9192 < 20.52 which means that we do not reject the null that there is no difference between the forced and unforced........... need to write this up formally
+
+```
+
+Methods Log Lik Test:
+We can test the effect of forced choice versus unforced choice using a likelihood ratio test for equality. The test statistic is:
+
+$$ -2*(LL_{r} - \sum LL{u}) $$
+Which is chi-squared distributed with K(M-1) degrees of freedom, where K is the number of restrictions (5), M is the number of treatments (2). The null hypothesis of the test is that the parameters are not significantly different between treatments. This means that if we do not reject the null, we can use the standard opt out method without worry of respondent bias. If the test statistic exceeds the critical value, found in the chi square table, then evidence suggests that the treatments sufficiently contribute to explaining the model and reject the null hypothesis of no difference between the forced and unforced datasets. 
+
+
+
+**Make pooled predictions using linear predictors given from model and calculate marginal probabilities based off of the status quo and GFW tech**
+```{r}
+fitted_pooled <- data.frame(lin_pred = pooled_clogit$linear.predictors) 
+
+new_pooled <- pooled %>%
+  select(package, STR, info, sos, own)
+
+model_preds_pooled <- cbind(new_pooled, fitted_pooled) %>% 
+  mutate(probs = exp(lin_pred)/(1 + exp(lin_pred)))
+
+preds_pooled <- model_preds_pooled %>%
+  group_by(package, info, sos, own) %>%
+  summarise(probs = mean(probs))
+
+write.csv(preds_pooled, "output/pooled_probs.csv", row.names = FALSE)
+
+# the status quo probability; Anonymous (info = 0), No SOS (sos = 0), Owned by fishermen (own = 1)
+status_quo <- preds_pooled$probs[preds_pooled$package == 15]
+#0.3826569
+
+## Make status quo non-anonymous; Non-Anonymous (info = 1), No SOS (sos = 0), Owned by fishermen (own = 1)
+add_non_anon <- preds_pooled$probs[preds_pooled$package == 3]
+#0.3520571
+
+## Make status quo with SOS; Anonymous (info = 0), SOS (sos = 1), Owned by fishermen (own = 1)
+add_sos <- preds_pooled$probs[preds_pooled$package == 7]
+
+## Make status quo own by ind; Anonymous (info = 0), no SOS (sos = 0), Owned by industry (own = 2)
+add_own_by_ind <- preds_pooled$probs[preds_pooled$package == 10]
+
+## Make status quo own by gov; Anonymous (info = 0), no SOS (sos = 0), Owned by government (own = 3)
+add_own_by_gov <- preds_pooled$probs[preds_pooled$package == 6]
+
+## Make status quo own by public; Anonymous (info = 0), no SOS (sos = 0), Owned by public (own = 4)
+add_own_by_public <- preds_pooled$probs[preds_pooled$package == 5]
+
+### Adding non anon to status quo results in a 3.06% decrease
+lin_pred_add_non_anon <-  status_quo - add_non_anon
+
+### adding sos to status quo results in a 49.56586% increase
+lin_pred_add_sos <- status_quo - add_sos
+
+### adding industry ownership results in a 26.30367% decrease
+lin_pred_add_ind <- status_quo - add_own_by_ind
+
+### adding government ownership results in a 0.5339% increase
+lin_pred_add_gov <- status_quo - add_own_by_gov
+
+### adding public access results in a 22.59136% decrease
+lin_pred_add_public <- status_quo - add_own_by_public
+
+# the status quo GFW probability; Non-Anonymous (info = 1), SOS (sos = 1), Public access (own = 4)
+GFW_prob <- preds_pooled$probs[preds_pooled$package == 11]
+#0.65486
+
+# GFW probabilty with anonymous; Anonymous (info = 0), SOS (sos = 1), Public (own = 4)
+add_anon_GFW <- preds_pooled$probs[preds_pooled$package == 4]
+
+# GFW probabilty with no SOS; non Anonymous (info = 1), no SOS (sos = 0), Public (own = 4)
+add_no_sos_GFW <- preds_pooled$probs[preds_pooled$package == 8]
+
+# GFW probabilty owned by gov; non Anonymous (info = 1), SOS (sos = 1), government (own = 3)
+add_gov_GFW <- preds_pooled$probs[preds_pooled$package == 2]
+
+# GFW probabilty owned by ind; non Anonymous (info = 1), SOS (sos = 1), industry (own = 2)
+add_ind_GFW <- preds_pooled$probs[preds_pooled$package == 13]
+
+# GFW probabilty owned by fish; non Anonymous (info = 1), SOS (sos = 1), fisher (own = 1)
+add_fisher_GFW <- preds_pooled$probs[preds_pooled$package == 12]
+
+### Adding anon to GFW status quo results in a 2.913529% increase
+lin_pred_GFW_add_anon <- GFW_prob - add_anon_GFW
+
+### adding no sos to GFW status quo results in a 51.47519% decrease
+lin_pred_GFW_add_no_sos <- GFW_prob- add_no_sos_GFW
+
+### adding government ownership to GFW status quo results in a 21.12957% increase
+lin_pred_GFW_add_gov <-  GFW_prob - add_gov_GFW
+
+### adding industry ownership to GFW status quo results in a 7.380583% decrease
+lin_pred_GFW_add_ind <- GFW_prob - add_ind_GFW
+
+### adding fisher ownership to GFW status quo results in a 20.86605% increase
+lin_pred_GFW_add_fisher <- GFW_prob - add_fisher_GFW
+```
+
+**Make pooled predictions using predict() and calculate marginal probabilities based off of the status quo and GFW tech**
+
+```{r}
+#predictions for pooled data
+
+library(AlgDesign)
+ffd <- gen.factorial(c(2,2,4), varNames = c("sos", "info", "own"), factors = "all") # construct a full factorial design which has two 2 level attributes and one 4 level attribute. factors = "all" indicates that all arguments are factors
+ffd 
+
+all_packages <- ffd %>%
+  mutate(STR = 1001) %>% 
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
+  mutate(own.fisher=ifelse(own==1,1,0), own.industry=ifelse(own==2,1,0), own.gov=ifelse(own==3,1,0), own.public=ifelse(own==4,1,0)) 
+
+#pooled_predictions <- predict(pooled_clogit, newdata = pooled, type = "expected", se.fit = TRUE) #this gives relative probs within strata. 
+
+pooled_predictions <- predict(pooled_clogit, newdata = all_packages, type = "risk", se.fit = TRUE) #this gives absolute probabilities? 
+
+
+pooled_predictions_data <- data.frame(all_packages, pooled_predictions) #%>%
+  #select(STR, package, info, sos, own, RES, fit)
+
+#reasoning for predicting out a clogit model:
+#https://markmail.org/search/?q=list%3Aorg.r-project.r-help+predict+clogit#query:list%3Aorg.r-project.r-help%20predict%20clogit%20from%3A%22Therneau%2C%20Terry%20M.%2C%20Ph.D.%22+page:1+mid:tsbl3cbnxywkafv6+state:results
+#https://stackoverflow.com/questions/35329585/how-to-get-fitted-values-from-clogit-model
+
+# sos	0 = no, 1 = yes
+# info 	1 = non, 0 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+pooled_predictions_data <- pooled_predictions_data %>%
+  mutate(level_probs1 = fit/(fit+ 1),
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-level_probs1) %>%
+  select(info, own, sos, own.fisher, own.industry, own.gov, own.public, level_probs1, level_se) 
+# %>%
+#   mutate(info = case_when(
+#     info == 0 ~ "Anon",
+#     info == 1 ~ "Non-Anon"
+#   ),
+#   own = case_when(
+#    own == 1 ~ "Fishers",
+#    own == 2 ~ "Industry",
+#    own == 3 ~ "Government",
+#    own == 4 ~ "Public Access"
+#   ),
+#   sos = case_when(
+#     sos == 0 ~ "No",
+#     sos == 1 ~ "Yes"
+#   ))
+
+# the status quo probability; Anonymous (info = 0), No SOS (sos = 0), Owned by fishermen (own = 1)
+status_quo_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 0 & pooled_predictions_data$sos == 0 & pooled_predictions_data$own == 1 ]
+#0.3636907
+
+## Make status quo non-anonymous; Non-Anonymous (info = 1), No SOS (sos = 0), Owned by fishermen (own = 1)
+add_non_anon_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 1 & pooled_predictions_data$sos == 0 & pooled_predictions_data$own == 1 ]
+#0.33337876
+
+## Make status quo with SOS; Anonymous (info = 0), SOS (sos = 1), Owned by fishermen (own = 1)
+add_sos_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 0 & pooled_predictions_data$sos == 1 & pooled_predictions_data$own == 1 ]
+#0.869379027
+
+## Make status quo own by ind; Anonymous (info = 0), no SOS (sos = 0), Owned by industry (own = 2)
+add_own_by_ind_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 0 & pooled_predictions_data$sos == 0 & pooled_predictions_data$own == 2 ]
+
+## Make status quo own by gov; Anonymous (info = 0), no SOS (sos = 0), Owned by government (own = 3)
+add_own_by_gov_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 0 & pooled_predictions_data$sos == 0 & pooled_predictions_data$own == 3 ]
+
+## Make status quo own by public; Anonymous (info = 0), no SOS (sos = 0), Owned by public (own = 4)
+add_own_by_public_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 0 & pooled_predictions_data$sos == 0 & pooled_predictions_data$own == 4 ]
+
+### Adding non anon to status quo results in a 2.99% decrease
+predict_add_non_anon <- status_quo_predict - add_non_anon_predict
+
+### adding sos to status quo results in a 50.56883% increase
+predict_add_sos <- status_quo_predict - add_sos_predict
+
+### adding industry ownership results in a 25.23507% decrease
+predict_add_ind <- status_quo_predict - add_own_by_ind_predict
+
+### adding government ownership results in a 0.5233067% increase
+predict_add_gov <- status_quo_predict - add_own_by_gov_predict
+
+### adding public access results in a 21.73703% decrease
+predict_add_public <- status_quo_predict - add_own_by_public_predict
+
+
+# the status quo GFW probability; Non-Anonymous (info = 1), SOS (sos = 1), Public access (own = 4)
+GFW_prob_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 1 & pooled_predictions_data$sos == 1 & pooled_predictions_data$own == 4 ]
+#0.65486
+
+# GFW probabilty with anonymous; Anonymous (info = 0), SOS (sos = 1), Public (own = 4)
+add_anon_GFW_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 0 & pooled_predictions_data$sos == 1 & pooled_predictions_data$own == 4 ]
+
+# GFW probabilty with no SOS; non Anonymous (info = 1), no SOS (sos = 0), Public (own = 4)
+add_no_sos_GFW_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 1 & pooled_predictions_data$sos == 0 & pooled_predictions_data$own == 4 ]
+
+# GFW probabilty owned by gov; non Anonymous (info = 1), SOS (sos = 1), government (own = 3)
+add_gov_GFW_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 1 & pooled_predictions_data$sos == 1 & pooled_predictions_data$own == 3 ]
+
+# GFW probabilty owned by ind; non Anonymous (info = 1), SOS (sos = 1), industry (own = 2)
+add_ind_GFW_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 1 & pooled_predictions_data$sos == 1 & pooled_predictions_data$own == 2 ]
+
+# GFW probabilty owned by fish; non Anonymous (info = 1), SOS (sos = 1), fisher (own = 1)
+add_fisher_GFW_predict <- pooled_predictions_data$level_probs1[pooled_predictions_data$info == 1 & pooled_predictions_data$sos == 1 & pooled_predictions_data$own == 1 ]
+
+### Adding anon to GFW status quo results in a 2.990312% increase
+predict_GFW_add_anon <- GFW_prob_predict - add_anon_GFW_predict
+
+### adding no sos to GFW status quo results in a 50.56883% decrease
+predict_GFW_add_no_sos <- GFW_prob_predict - add_no_sos_GFW_predict
+
+### adding government ownership to GFW status quo results in a 22.01639% increase
+predict_GFW_add_gov <- GFW_prob_predict - add_gov_GFW_predict
+
+### adding industry ownership to GFW status quo results in a 7.51147% decrease
+predict_GFW_add_ind <- GFW_prob_predict - add_ind_GFW_predict
+
+### adding fisher ownership to GFW status quo results in a 21.73703% increase
+predict_GFW_add_fisher <- GFW_prob_predict - add_fisher_GFW_predict
+
+```
+
+**Make pooled predictions using what we think to be the output formula for logistic regression and calculate marginal probabilities based off of the status quo and GFW tech**
+```{r}
+### Calculate probabiltiies using formula ###
+
+#make function from pooled model output
+clogit_pooled_fxn <- function(info, sos, own.fisher, own.industry, own.gov){
+  prob <- exp(info_coef*info + sos_coef*sos + own_1_coef*own.fisher + own_2_coef*own.industry + own_3_coef*own.gov)/(1+ exp(info_coef*info + sos_coef*sos + own_1_coef*own.fisher + own_2_coef*own.industry + own_3_coef*own.gov))
+  
+  return(prob)
+}
+
+pooled_predictions_data_form <- pooled_predictions_data %>%
+  select(-level_probs1, -level_se) %>%
+  mutate(info = as.integer(info), sos = as.integer(sos), own.fisher = as.integer(own.fisher), own.industry = as.integer(own.industry), own.gov = as.integer(own.gov)) %>%
+  select(info, sos, own, own.fisher, own.industry, own.gov, own.public)
+
+
+preds_pooled_form <- cbind(pooled_predictions_data_form, data.frame(probs = clogit_pooled_fxn(pooled_predictions_data_form$info, pooled_predictions_data_form$sos, pooled_predictions_data_form$own.fisher, pooled_predictions_data_form$own.industry, pooled_predictions_data_form$own.gov)))
+
+# the status quo probability using formula; Anonymous (info = 0), No SOS (sos = 0), Owned by fishermen (own = 1)
+status_quo_form <- preds_pooled_form$probs[preds_pooled_form$info == 0 & preds_pooled_form$sos == 0 & preds_pooled_form$own == 1]
+#0.7693022
+
+## Make status quo non-anonymous; Non-Anonymous (info = 1), No SOS (sos = 0), Owned by fishermen (own = 1)
+add_non_anon_form <- preds_pooled_form$probs[preds_pooled_form$info == 1 & preds_pooled_form$sos == 0 & preds_pooled_form$own == 1]
+#0.7451011
+
+## Make status quo with SOS; Anonymous (info = 0), SOS (sos = 1), Owned by fishermen (own = 1)
+add_sos_form <- preds_pooled_form$probs[preds_pooled_form$info == 0 & preds_pooled_form$sos == 1 & preds_pooled_form$own == 1]
+#0.974894
+
+## Make status quo own by ind; Anonymous (info = 0), SOS (sos = 0), Owned by industry (own = 2)
+add_own_by_ind_form <- preds_pooled_form$probs[preds_pooled_form$info == 0 & preds_pooled_form$sos == 0 & preds_pooled_form$own == 2]
+
+## Make status quo own by gov; Anonymous (info = 0), SOS (sos = 0), Owned by government (own = 3)
+add_own_by_gov_form <- preds_pooled_form$probs[preds_pooled_form$info == 0 & preds_pooled_form$sos == 0 & preds_pooled_form$own == 3]
+
+## Make status quo own by public; Anonymous (info = 0), SOS (sos = 0), Owned by public (own = 4)
+add_own_by_public_form <- preds_pooled_form$probs[preds_pooled_form$info == 0 & preds_pooled_form$sos == 0 & preds_pooled_form$own == 4]
+
+### Adding non anon to status quo results in a 2.420118% decrease
+form_add_non_anon <- status_quo_form - add_non_anon_form
+
+### adding sos to status quo results in a 20.55921% increase
+form_add_sos <- status_quo_form - add_sos_form
+
+### adding industry ownership results in a 34.70097% decrease
+form_add_ind <- status_quo_form - add_own_by_ind_form
+
+### adding government ownership results in a .3976774% increase
+form_add_gov <- status_quo_form - add_own_by_gov_form
+
+### adding public access results in a 26.93023% decrease
+form_add_public <- status_quo_form - add_own_by_public_form
+
+
+
+
+# the status quo GFW probability; Non-Anonymous (info = 1), SOS (sos = 1), Public access (own = 4)
+GFW_prob_form <- preds_pooled_form$probs[preds_pooled_form$info == 1 & preds_pooled_form$sos == 1 & preds_pooled_form$own == 4]
+#0.65486
+
+# GFW probabilty with anonymous; Anonymous (info = 0), SOS (sos = 1), Public (own = 4)
+add_anon_GFW_form <- preds_pooled_form$probs[preds_pooled_form$info == 0 & preds_pooled_form$sos == 1 & preds_pooled_form$own == 4]
+
+# GFW probabilty with no SOS; non Anonymous (info = 1), no SOS (sos = 0), Public (own = 4)
+add_no_sos_GFW_form <- preds_pooled_form$probs[preds_pooled_form$info == 1 & preds_pooled_form$sos == 0 & preds_pooled_form$own == 4]
+
+# GFW probabilty owned by gov; non Anonymous (info = 1), SOS (sos = 1), government (own = 3)
+add_gov_GFW_form <- preds_pooled_form$probs[preds_pooled_form$info == 1 & preds_pooled_form$sos == 1 & preds_pooled_form$own == 3]
+
+# GFW probabilty owned by ind; non Anonymous (info = 1), SOS (sos = 1), industry (own = 2)
+add_ind_GFW_form <- preds_pooled_form$probs[preds_pooled_form$info == 1 & preds_pooled_form$sos == 1 & preds_pooled_form$own == 2]
+
+# GFW probabilty owned by fish; non Anonymous (info = 1), SOS (sos = 1), fishermen (own = 1)
+add_fisher_GFW_form <- preds_pooled_form$probs[preds_pooled_form$info == 1 & preds_pooled_form$sos == 1 & preds_pooled_form$own == 1]
+
+### Adding anon to GFW status quo results in a 1.014091% increase
+form_GFW_add_anon <- GFW_prob_form - add_anon_GFW_form
+
+### adding no sos to GFW status quo results in a 44.36584% decrease
+form_GFW_add_no_sos <- GFW_prob_form - add_no_sos_GFW_form
+
+### adding government ownership to GFW status quo results in a 6.130375% increase
+form_GFW_add_gov <- GFW_prob_form - add_gov_GFW_form
+
+### adding industry ownership to GFW status quo results in a 2.895636% decrease
+form_GFW_add_ind <- GFW_prob_form - add_ind_GFW_form
+
+### adding fisher ownership to GFW status quo results in a 6.068531% increase
+form_GFW_add_fisher <- GFW_prob_form - add_fisher_GFW_form
+
+
+comp_lin_pred <- -1*100*data.frame(lin_pred_add_non_anon, lin_pred_add_sos, lin_pred_add_ind, lin_pred_add_gov, lin_pred_add_public) %>%
+  rename( "add_non_anon" = 1, "add_sos" = 2, "add_ind" = 3, "add_gov" = 4, "add_public" = 5) 
+rownames(comp_lin_pred) <- "lin_pred"
+
+comp_predict <- -1*100*data.frame(predict_add_non_anon, predict_add_sos, predict_add_ind, predict_add_gov, predict_add_public) %>%
+  rename( "add_non_anon" = 1, "add_sos" = 2, "add_ind" = 3, "add_gov" = 4, "add_public" = 5)
+rownames(comp_predict) <- "predict"
+
+comp_formula <- -1*100*data.frame(form_add_non_anon, form_add_sos, form_add_ind, form_add_gov, form_add_public) %>%
+  rename( "add_non_anon" = 1, "add_sos" = 2, "add_ind" = 3, "add_gov" = 4, "add_public" = 5)
+rownames(comp_formula) <- "formula"
+
+comp_lin_pred_gfw <- -1*100*data.frame(lin_pred_GFW_add_anon, lin_pred_GFW_add_no_sos, lin_pred_GFW_add_anon, lin_pred_GFW_add_ind, lin_pred_GFW_add_gov) %>%
+  rename( "gfw_add_anon" = 1, "gfw_add_no_sos" = 2, "gfw_add_fisher" = 3, "gfw_add_ind" = 4, "gfw_add_gov" = 5) 
+rownames(comp_lin_pred_gfw) <- "lin_pred"
+
+comp_predict_gfw <- -1*100*data.frame(predict_GFW_add_anon, predict_GFW_add_no_sos, predict_GFW_add_anon, predict_GFW_add_ind, predict_GFW_add_gov) %>%
+  rename( "gfw_add_anon" = 1, "gfw_add_no_sos" = 2, "gfw_add_fisher" = 3, "gfw_add_ind" = 4, "gfw_add_gov" = 5) 
+rownames(comp_predict_gfw) <- "predict"
+
+comp_formula_gfw <- -1*100*data.frame(form_GFW_add_anon, form_GFW_add_no_sos, form_GFW_add_anon, form_GFW_add_ind, form_GFW_add_gov) %>%
+  rename( "gfw_add_anon" = 1, "gfw_add_no_sos" = 2, "gfw_add_fisher" = 3, "gfw_add_ind" = 4, "gfw_add_gov" = 5) 
+rownames(comp_formula_gfw) <- "formula"
+
+final_reg <- rbind(comp_lin_pred, comp_predict, comp_formula)
+
+final_gfw <- rbind(comp_lin_pred_gfw, comp_predict_gfw, comp_formula_gfw)
+
+final_combined_clogit_marg_probs <- cbind(final_reg, final_gfw)
+
+write.csv(final_combined_clogit_marg_probs, "output/unformatted_clogit_marg_probs.csv", row.names = TRUE)
+
+## combine all forms of calculating probs
+newnew <- left_join(preds_pooled, preds_pooled_form, by = c("info", "sos", "own"))
+
+newnewnew <- left_join(newnew, pooled_predictions_data, by = c("info", "sos", "own")) %>%
+  select(package, info, sos, own, lin_pred_probs = probs.x, probs_form = probs.y, predict_probs = level_probs1 )
+
+write.csv(newnewnew, "output/clogit_pooled_probs.csv", row.names = FALSE)
+```
+
+**Make forced predictions data using predict()**
+```{r}
+#forced predictions 
+
+forced_predictions <- predict(forced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
+
+forced_predictions_data <- data.frame(all_packages, forced_predictions)  
+
+# sos	0 = no, 1 = yes
+# info 	1 = non, 0 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+forced_predictions_data <- forced_predictions_data %>%
+  mutate(level_probs1 = fit/(fit+ 1),
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-level_probs1) %>%
+  select(info, own, sos, level_probs1, level_se) %>%
+  mutate(info = case_when(
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
+  ), 
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry", 
+   own == 3 ~ "Government", 
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
+  ))
+
+write.csv(forced_predictions_data, "output/forced_probs.csv", row.names = FALSE)
+
+DT::datatable(forced_predictions_data)
+```
+
+**Make unforced prediction using predict()**
+```{r}
+#unforced predictions 
+
+unforced_predictions <- predict(unforced_clogit, newdata = all_packages, type = "risk", se.fit = TRUE)
+
+unforced_predictions_data <- data.frame(all_packages, unforced_predictions)  
+
+# sos	0 = no, 1 = yes
+# info 	1 = non, 0 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+unforced_predictions_data <- unforced_predictions_data %>%
+  mutate(level_probs1 = fit/(fit+ 1),
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-level_probs1) %>%
+  select(info, own, sos, level_probs1, level_se) %>%
+  mutate(info = case_when(
+    info == 0 ~ "Anon",
+    info == 1 ~ "Non-Anon"
+  ), 
+  own = case_when(
+   own == 1 ~ "Fishers",
+   own == 2 ~ "Industry", 
+   own == 3 ~ "Government", 
+   own == 4 ~ "Public Access"
+  ),
+  sos = case_when(
+    sos == 0 ~ "No",
+    sos == 1 ~ "Yes"
+  ))
+
+write.csv(unforced_predictions_data, "output/unforced_probs.csv", row.names = FALSE)
+
+DT::datatable(unforced_predictions_data)
+
+```
+
+**Make standard predictions using predict()**
+```{r}
+#standard predictions
+all_packages_standard <- all_packages %>%
+  mutate(ASC = 1) 
+
+standard_predictions <- predict(standard_clogit, newdata = standard_opt_out, type = "risk", se.fit = TRUE)
+
+standard_predictions_data <- data.frame(standard_opt_out, standard_predictions) %>%
+  select(STR, package, info, sos, own, RES, fit, se.fit)
+
+# sos	0 = no, 1 = yes
+# info 	1= non, 0 = anon
+# own	1 = fishers, 2 = industry, 3 = govt, 4 = public access
+#adopt : 1 = accept, 0 = decline
+
+standard_predictions_data <- standard_predictions_data %>%
+  mutate(`probability (%)` = round(fit/(fit+ 1),4)*100,
+         level_se = se.fit/(se.fit + 1)) %>%
+  select(-fit, -se.fit, -STR) %>%
+  arrange(-`probability (%)`) %>%
+  select(package, info, own, sos, `probability (%)`, level_se) %>%
+  group_by(package, info, own, sos) %>%
+  summarise(`probability (%)` = mean(`probability (%)`), level_se = mean(level_se)) 
+
+write.csv(standard_predictions_data, "output/standard_probs.csv", row.names = FALSE)
+
+DT::datatable(standard_predictions_data)
+```
+
+
+# BLR including WTP
+```{r}
+
+survey <- read_csv("raw/master_survey_resp.csv")
+
+#data formatting 
+choice<- read.csv("raw/version_to_package.csv", stringsAsFactors = TRUE) %>% 
+  rename(survey_version = 1)
+
+packages<- read.csv("raw/packages.csv", stringsAsFactors = TRUE)  %>% 
+  rename(package = 1)
+
+choice_package<-choice %>% 
+  left_join(packages) %>% 
+  mutate(choice = ifelse(package <=16,1,2))
+
+
+
+ 
+
+
+
+
+
+pack_no <- survey %>% 
+  filter(package_nopackage == 0) %>% 
+  mutate(wtp = ifelse(wtr_4== "y", -4,
+                      ifelse(wtr_4== "n", -5,
+                             ifelse(wtr_3=="y", -3,
+                                    ifelse(wtr_2=="y", -2, -1))))) %>% 
+  select(-starts_with("wtp_"), -starts_with("wtr_"), -package_nopackage) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=1)
+
+pack_no_no<-pack_no %>% 
+  mutate(wtp=(wtp+1)) %>% 
+  mutate(choice = 0)
+
+pack_yes_no<-pack_yes %>% 
+  filter(wtp!=4) %>% 
+  mutate(wtp=(wtp+1)) %>% 
+  mutate(choice = 0)
+
+bind_pre<-rbind(pack_no,pack_yes, pack_no_no, pack_yes_no) %>% 
+  filter(wtp!=-5)
+
+other_pack<-bind_pre %>% 
+  select(survey_id, survey_version, country,  choice) %>%
+  mutate(choice = ifelse(choice == 1,2,1)) %>% 
+  left_join(choice_package) %>% 
+  mutate(choice=0) %>% 
+  mutate(wtp=0)
+
+bind<-rbind(bind_pre, other_pack)  
+```
+
+For IND
+
+wtp_1 = $2.14
+wtp_2 = $3.56
+wtp_3 = $5.35
+wtp_4 = $7.12
+
+For MEX 
+
+wtp_1 = $2.07
+wtp_2 = $3.62
+wtp_3 = $5.17
+wtp_4 = $7.75
+
+```{r}
+usd_ind<-data.frame("wtp"=c(0:4,-1:-4),  "country" = "IND", "USD" = c(0, 2.14, 3.56, 5.35, 7.12, -2.14, -3.56, -5.35, -7.12))
+
+usd_mex<-data.frame("wtp"=c(0:4,-1:-4),  "country" = "MEX", "USD" = c(0, 2.07, 3.62, 5.17, 7.75, -2.07, -3.62, -5.17, -7.75))
+
+usd<-rbind(usd_ind, usd_mex)
+
+
+
+survey <- read_csv("raw/master_survey_resp.csv") 
+
+wtp_n_usd<- survey %>% 
+  dplyr::select(survey_id, starts_with("wtp_"), starts_with("wtr_"), country) %>% 
+  mutate(wtp = ifelse(wtp_1 == "n", 0,
+                      ifelse(wtp_2 == "n", 1,
+                             ifelse(wtp_3 == "n", 2,
+                                    ifelse(wtp_4 == "n", 3, 
+                                           ifelse(wtp_4 == "y", 4, NA)))))) %>% 
+  mutate(wtr = ifelse(wtr_1== "y", -1,
+                      ifelse(wtr_2== "y", -2,
+                             ifelse(wtr_3=="y", -3,
+                                    ifelse(wtr_4=="y", -4, -5))))) %>% 
+  dplyr::select(survey_id, country, wtp, wtr) %>% 
+  gather(key = "cat", value = "wtp", -survey_id, -country, na.rm = TRUE) %>% 
+  dplyr::select(survey_id, country, wtp) %>% 
+  left_join(usd)%>% 
+  mutate(category = ifelse(wtp== -5, "protest", 
+                           ifelse(wtp == 0, "zero", 
+                                  ifelse(wtp>0, "pay", "receive")))) 
+
+wtp_summary<-wtp_n_usd %>% 
+  left_join(survey) %>% 
+  mutate(community=ifelse(community=="TTN", "ALT", community))
+
+ggplot(wtp_summary, aes(x = category))+
+  geom_bar()+
+  facet_wrap(~community)
+
+#number of fishers in +, 0, -, protest category. 
+
+four_cat<-wtp_n_usd  %>% 
+  group_by(category) %>% 
+  tally() %>% 
+  ungroup()
+
+ggplot(four_cat, aes(x=category, y = n)) +
+  geom_col()
+
+```
+
+
+
+
