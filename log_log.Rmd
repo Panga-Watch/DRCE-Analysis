@@ -23,6 +23,7 @@ library(WDI)
 library(foreign)
 library(GGally)
 library(survival)
+library(Metrics)
 
 ```
 
@@ -482,8 +483,26 @@ summary(int_16, cluster = c("community"))
 AIC(int_tech, int, int_1, int_2, int_3, int_4, int_5, int_6, int_7, int_8, int_9, int_10, int_11, int_12, int_13, int_15, int_16)
 ```
 
+```{r}
+score = list()
+
+LOOCV_function = function(x,label){
+  x = bind_interval_final
+  label = "test"
+ for(i in 1:nrow(x)){
+   i = 1
+ training = x[-i,]
+ model = survreg(intervals ~ sos + info + own + rank_one + fishtech + education, data = x, dist = "gaussian")
+ validation = x[i,]
+ #pred = predict(model, validation[,setdiff(names(validation),label)])
+  pred = predict(model)
+ #score[[i]] = rmse(pred, validation[[label]]) # score/error of ith fold
+ score[[i]] = rmse(pred)
+  }
+ return(unlist(score)) # returns a vector
+ }
 
 
-
-
+LOOCV_function(bind_interval_final, "e")
+```
 
