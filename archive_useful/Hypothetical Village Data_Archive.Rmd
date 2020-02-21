@@ -630,7 +630,7 @@ ggplot(try_psc, aes(x= int_15_wtp)) +
 try_psc %>% 
   filter(package == 1) %>%
   ggplot( aes(x = int_15_wtp, y = prop_sum)) +
-  geom_line()
+  geom_point()
 ```
 
 
