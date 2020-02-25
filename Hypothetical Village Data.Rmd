@@ -110,6 +110,8 @@ psc_predict_packages <- left_join(psc_predict, packages)
 
 ## lets try it a different way, without comparing the dollar values... I think we get same result, just a bit harder to interpret
 
+dollar_values <- seq(-3, 8, by = 0.01)
+
 try_psc<-psc_predict_packages %>% 
   #filter(regression_type == "interval") %>% 
   group_by(package, int_15_wtp) %>% 
@@ -119,8 +121,8 @@ try_psc<-psc_predict_packages %>%
   mutate(prop_sum = cumsum(prop)) 
 
 try_psc %>% 
-  filter(package == 1) %>%
-  ggplot( aes(x = int_15_wtp, y = prop_sum)) +
+  #filter(package == 1) %>%
+  ggplot( aes(x = int_15_wtp, y = prop_sum, color = factor(package))) +
   geom_step() +
   scale_x_continuous(breaks = seq(-4, 6, by = 1)) +
   theme_bw() + 
@@ -294,8 +296,8 @@ try_pepela <-pepela_predict_packages %>% s
   mutate(prop_sum = cumsum(prop)) 
 
 try_pepela %>% 
-  filter(package == 11) %>%
-  ggplot( aes(x = int_15_wtp, y = prop_sum)) +
+  #filter(package == 11) %>%
+  ggplot( aes(x = int_15_wtp, y = prop_sum, color = factor(package))) +
   geom_step() +
   scale_x_continuous(breaks = seq(-4, 6, by = 1)) +
   theme_bw() + 
