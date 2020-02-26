@@ -562,6 +562,142 @@ int_predictions %>%
 
 ```
 
+Split data in half and parameterize the model:
+
+```{r}
+bind_interval_final_train_half <- bind_interval_final %>%
+  head(., 94)
+
+bind_interval_final_test_half <- bind_interval_final %>%
+  tail(., 94)
+
+intervals_train_half <- with(bind_interval_final_train_half, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_train_half)), type = "interval"))
+
+intervals_test_half <- with(bind_interval_final_test_half, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_test_half)), type = "interval"))
+
+int_15_train_half <- survreg(intervals_train_half ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_train_half, dist = "gaussian") ## normal distribution... WTP does look normal
+summary(int_15_train_half, cluster = c("community"))
+
+#                     Value Std. Error     z       p
+# (Intercept)        0.7618     1.5887  0.48 0.63159
+# sos                0.6477     0.5147  1.26 0.20822
+# info              -0.7666     0.4157 -1.84 0.06517
+# own1               1.3374     0.5555  2.41 0.01606
+# own2               0.9793     0.8067  1.21 0.22479
+# own3               0.7262     0.5733  1.27 0.20521
+# rank_oneiuu       -2.2593     0.9729 -2.32 0.02022
+# rank_onepollution -3.2900     0.9900 -3.32 0.00089
+# rank_oneweather   -3.3238     0.8056 -4.13 3.7e-05
+# fishtech           1.1995     0.4599  2.61 0.00910
+# educationformal    3.4018     1.3196  2.58 0.00994
+# educationhigher    4.1320     1.5118  2.73 0.00627
+# Log(scale)         0.6402     0.0795  8.05 8.1e-16
+
+int_15_test_half <- survreg(intervals_test_half ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_test_half, dist = "gaussian") ## normal distribution... WTP does look normal
+summary(int_15_test_half, cluster = c("community"))
+
+#                     Value Std. Error     z      p
+# (Intercept)        3.2362     2.1262  1.52  0.128
+# sos                2.1915     1.0289  2.13  0.033
+# info              -0.4621     0.6863 -0.67  0.501
+# own1               0.5740     0.9690  0.59  0.554
+# own2               0.8447     1.0550  0.80  0.423
+# own3              -1.5923     0.9157 -1.74  0.082
+# rank_oneiuu       -1.6393     0.9894 -1.66  0.098
+# rank_onepollution -1.3335     0.9145 -1.46  0.145
+# rank_oneweather   -2.1294     1.4761 -1.44  0.149
+# fishtech          -0.4043     1.1184 -0.36  0.718
+# educationformal    1.8052     1.7776  1.02  0.310
+# educationhigher    3.1322     2.2274  1.41  0.160
+# Log(scale)         1.1254     0.0818 13.75 <2e-16
+
+
+bind_interval_final_mex <- bind_interval_final %>%
+  filter(country == "MEX")
+
+intervals_mex <- with(bind_interval_final_mex, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_mex)), type = "interval"))
+
+bind_interval_final_ind <- bind_interval_final %>%
+  filter(country == "IND")
+
+intervals_ind <- with(bind_interval_final_ind, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_ind)), type = "interval"))
+
+
+int_15_mex <- survreg(intervals_mex ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_mex, dist = "gaussian") ## normal distribution... WTP does look normal
+summary(int_15_mex, cluster = c("community"))
+
+#                     Value Std. Error     z       p
+# (Intercept)        2.6715     2.3812  1.12 0.26190
+# sos                3.5457     0.9783  3.62 0.00029
+# info              -0.2681     0.6878 -0.39 0.69666
+# own1               0.9992     0.9396  1.06 0.28758
+# own2               0.8221     1.1254  0.73 0.46512
+# own3              -1.2424     0.9277 -1.34 0.18051
+# rank_oneiuu       -1.3179     0.9166 -1.44 0.15048
+# rank_onepollution -1.2608     0.8361 -1.51 0.13155
+# rank_oneweather   -7.3607     2.2048 -3.34 0.00084
+# fishtech           0.0000     0.0000    NA      NA
+# educationformal    0.3641     2.2725  0.16 0.87270
+# educationhigher    1.5515     2.5473  0.61 0.54247
+# Log(scale)         1.0537     0.0902 11.68 < 2e-16
+
+int_15_ind <- survreg(intervals_ind ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_ind, dist = "gaussian") ## normal distribution... WTP does look normal
+summary(int_15_ind, cluster = c("community"))
+
+#                     Value Std. Error     z      p
+# (Intercept)        2.5078     1.5720  1.60 0.1107
+# sos               -0.1463     0.5713 -0.26 0.7979
+# info              -0.5747     0.4469 -1.29 0.1985
+# own1               0.7868     0.6212  1.27 0.2054
+# own2               0.9195     0.8112  1.13 0.2570
+# own3               0.0250     0.6193  0.04 0.9678
+# rank_oneiuu       -1.6309     1.2175 -1.34 0.1804
+# rank_onepollution -3.9572     1.2926 -3.06 0.0022
+# rank_oneweather   -3.2240     1.1333 -2.84 0.0044
+# fishtech           0.9622     0.4989  1.93 0.0538
+# educationformal    3.0011     1.1481  2.61 0.0089
+# educationhigher    3.4255     1.4570  2.35 0.0187
+# Log(scale)         0.7902     0.0741 10.66 <2e-16
+
+plot(residuals(int_15_mex)) ## pretty random.
+
+plot(residuals(int_15_ind)) # pretty random.
+
+## predict mexican data with indonesia parameterized model:
+indo_model_mexi_df_predict <- data.frame(bind_interval_final_mex, wtp_predict = predict(int_15_ind, newdata = bind_interval_final_mex)) %>%
+  mutate(in_interval = ifelse(wtp_predict < wtp_upper & wtp_predict > wtp_lower, 1, 0)) %>%
+  select(survey_id, country, wtp_lower, wtp_upper, wtp_predict, in_interval, education, rank_one, fishtech, sos, info, own) %>%
+  unite(interval, wtp_lower:wtp_upper, sep = ", ", remove = FALSE) %>%
+  mutate(bid_intervals_mean = (wtp_lower + wtp_upper)/2) %>%
+  mutate(interval_range = (wtp_upper - wtp_lower)) 
+
+indo_model_mexi_df_predict %>%
+  ggplot(aes(x = bid_intervals_mean, y = wtp_predict)) +
+  geom_point() +
+  scale_x_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
+  scale_y_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
+  geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2), height = 0)) +
+  labs(title = "Indo Model Predicted on Mexican Data") +
+  geom_abline(intercept = 0, slope = 1)
+
+## predict indonesia data with mexican model
+mexi_model_indo_df_predict <- data.frame(bind_interval_final_ind, wtp_predict = predict(int_15_mex, newdata = bind_interval_final_ind)) %>%
+  mutate(in_interval = ifelse(wtp_predict < wtp_upper & wtp_predict > wtp_lower, 1, 0)) %>%
+  select(survey_id, country, wtp_lower, wtp_upper, wtp_predict, in_interval, education, rank_one, fishtech, sos, info, own) %>%
+  unite(interval, wtp_lower:wtp_upper, sep = ", ", remove = FALSE) %>%
+  mutate(bid_intervals_mean = (wtp_lower + wtp_upper)/2) %>%
+  mutate(interval_range = (wtp_upper - wtp_lower)) 
+
+mexi_model_indo_df_predict %>%
+  filter(country == "IND") %>%
+  ggplot(aes(x = bid_intervals_mean, y = wtp_predict)) +
+  geom_point() +
+  scale_x_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
+  scale_y_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
+  geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2), height = 0)) +
+  labs(title = "Mexican Model Predicted on Indo Data") +
+  geom_abline(intercept = 0, slope = 1)
+```
 
 
 Everything below here still tweaking with:
@@ -700,108 +836,6 @@ models_log = list()
   
   # But overall, our mean rmse (2.121991) is generally small among our training predictions, since our wtp values have such a large range. This means we have a pretty good fit. 
  
-```
-
-Split data in half and parameterize the model:
-
-```{r}
-bind_interval_final_train_half <- bind_interval_final %>%
-  head(., 94)
-
-bind_interval_final_test_half <- bind_interval_final %>%
-  tail(., 94)
-
-intervals_train_half <- with(bind_interval_final_train_half, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_train_half)), type = "interval"))
-
-intervals_test_half <- with(bind_interval_final_test_half, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_test_half)), type = "interval"))
-
-int_15_train_half <- survreg(intervals_train_half ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_train_half, dist = "gaussian") ## normal distribution... WTP does look normal
-summary(int_15_train_half, cluster = c("community"))
-
-#                     Value Std. Error     z       p
-# (Intercept)        0.7618     1.5887  0.48 0.63159
-# sos                0.6477     0.5147  1.26 0.20822
-# info              -0.7666     0.4157 -1.84 0.06517
-# own1               1.3374     0.5555  2.41 0.01606
-# own2               0.9793     0.8067  1.21 0.22479
-# own3               0.7262     0.5733  1.27 0.20521
-# rank_oneiuu       -2.2593     0.9729 -2.32 0.02022
-# rank_onepollution -3.2900     0.9900 -3.32 0.00089
-# rank_oneweather   -3.3238     0.8056 -4.13 3.7e-05
-# fishtech           1.1995     0.4599  2.61 0.00910
-# educationformal    3.4018     1.3196  2.58 0.00994
-# educationhigher    4.1320     1.5118  2.73 0.00627
-# Log(scale)         0.6402     0.0795  8.05 8.1e-16
-
-int_15_test_half <- survreg(intervals_test_half ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_test_half, dist = "gaussian") ## normal distribution... WTP does look normal
-summary(int_15_test_half, cluster = c("community"))
-
-#                     Value Std. Error     z      p
-# (Intercept)        3.2362     2.1262  1.52  0.128
-# sos                2.1915     1.0289  2.13  0.033
-# info              -0.4621     0.6863 -0.67  0.501
-# own1               0.5740     0.9690  0.59  0.554
-# own2               0.8447     1.0550  0.80  0.423
-# own3              -1.5923     0.9157 -1.74  0.082
-# rank_oneiuu       -1.6393     0.9894 -1.66  0.098
-# rank_onepollution -1.3335     0.9145 -1.46  0.145
-# rank_oneweather   -2.1294     1.4761 -1.44  0.149
-# fishtech          -0.4043     1.1184 -0.36  0.718
-# educationformal    1.8052     1.7776  1.02  0.310
-# educationhigher    3.1322     2.2274  1.41  0.160
-# Log(scale)         1.1254     0.0818 13.75 <2e-16
-
-
-bind_interval_final_mex <- bind_interval_final %>%
-  filter(country == "MEX")
-
-intervals_mex <- with(bind_interval_final_mex, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_mex)), type = "interval"))
-
-bind_interval_final_ind <- bind_interval_final %>%
-  filter(country == "IND")
-
-intervals_ind <- with(bind_interval_final_ind, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final_ind)), type = "interval"))
-
-
-int_15_mex <- survreg(intervals_mex ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_mex, dist = "gaussian") ## normal distribution... WTP does look normal
-summary(int_15_mex, cluster = c("community"))
-
-#                     Value Std. Error     z       p
-# (Intercept)        2.6715     2.3812  1.12 0.26190
-# sos                3.5457     0.9783  3.62 0.00029
-# info              -0.2681     0.6878 -0.39 0.69666
-# own1               0.9992     0.9396  1.06 0.28758
-# own2               0.8221     1.1254  0.73 0.46512
-# own3              -1.2424     0.9277 -1.34 0.18051
-# rank_oneiuu       -1.3179     0.9166 -1.44 0.15048
-# rank_onepollution -1.2608     0.8361 -1.51 0.13155
-# rank_oneweather   -7.3607     2.2048 -3.34 0.00084
-# fishtech           0.0000     0.0000    NA      NA
-# educationformal    0.3641     2.2725  0.16 0.87270
-# educationhigher    1.5515     2.5473  0.61 0.54247
-# Log(scale)         1.0537     0.0902 11.68 < 2e-16
-
-int_15_ind <- survreg(intervals_ind ~ sos + info + own + rank_one + fishtech + education, data = bind_interval_final_ind, dist = "gaussian") ## normal distribution... WTP does look normal
-summary(int_15_ind, cluster = c("community"))
-
-#                     Value Std. Error     z      p
-# (Intercept)        2.5078     1.5720  1.60 0.1107
-# sos               -0.1463     0.5713 -0.26 0.7979
-# info              -0.5747     0.4469 -1.29 0.1985
-# own1               0.7868     0.6212  1.27 0.2054
-# own2               0.9195     0.8112  1.13 0.2570
-# own3               0.0250     0.6193  0.04 0.9678
-# rank_oneiuu       -1.6309     1.2175 -1.34 0.1804
-# rank_onepollution -3.9572     1.2926 -3.06 0.0022
-# rank_oneweather   -3.2240     1.1333 -2.84 0.0044
-# fishtech           0.9622     0.4989  1.93 0.0538
-# educationformal    3.0011     1.1481  2.61 0.0089
-# educationhigher    3.4255     1.4570  2.35 0.0187
-# Log(scale)         0.7902     0.0741 10.66 <2e-16
-
-plot(residuals(int_15_mex)) ## pretty random.
-
-plot(residuals(int_15_ind)) # pretty random.
 ```
 
 
