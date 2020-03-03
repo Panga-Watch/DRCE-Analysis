@@ -34,10 +34,10 @@ library(reshape)
 ```{r}
 #data formatting 
 choice <- read.csv("raw/version_to_package.csv", stringsAsFactors = TRUE) %>% 
-  rename(survey_version = 1)
+  dplyr::rename(survey_version = 1)
 
 packages <- read.csv("raw/packages.csv", stringsAsFactors = TRUE)  %>% 
-  rename(package = 1)
+  dplyr::rename(package = 1)
 
 choice_package <- choice %>% 
   left_join(packages) %>% 
@@ -210,7 +210,7 @@ usd_com_mean <-income_fix %>%
 #adding in GDP per Capita conversion 
 gdp_raw <- WDI(indicator = "NY.GDP.PCAP.KD", country=c("MX", "ID"), start = 2018, end = 2018) %>% 
   mutate(country = ifelse(country=="Mexico", "MEX", "IND")) %>% 
-  rename(c = 1) %>% 
+  dplyr::rename(c = 1) %>% 
   select(-c, -year)
 
 variables_income_fix <- income_fix %>% 
@@ -417,7 +417,7 @@ bind_interval_mex <- bind_log_final %>%
   
 
 bind_interval_final <- rbind(bind_interval_ind, bind_interval_mex) %>%
-  rename("wtp_lower" = "wtp")  %>%
+  dplyr::rename("wtp_lower" = "wtp")  %>%
   arrange(survey_id)
 
 intervals <- with(bind_interval_final, Surv(wtp_lower, wtp_upper, event = rep(3, nrow(bind_interval_final)), type = "interval"))
@@ -506,7 +506,7 @@ anova(int_15)
 
 ```
 
-Predict on our data with int_16 and see if predicted values fall into interval range: GRAPHS
+Predict on our data with int_15 and see if predicted values fall into interval range: GRAPHS
 ```{r}
 
 int_predictions <- data.frame(bind_interval_final, wtp_predict = predict(int_15, newdata = bind_interval_final)) %>%
@@ -514,39 +514,52 @@ int_predictions <- data.frame(bind_interval_final, wtp_predict = predict(int_15,
   select(survey_id, country, wtp_lower, wtp_upper, wtp_predict, in_interval, education, rank_one, fishtech, sos, info, own) %>%
   unite(interval, wtp_lower:wtp_upper, sep = ", ", remove = FALSE) %>%
   mutate(bid_intervals_mean = (wtp_lower + wtp_upper)/2) %>%
-  mutate(interval_range = (wtp_upper - wtp_lower))
+  mutate(interval_range = (wtp_upper - wtp_lower)) %>%
+  mutate(upper_difference = wtp_predict - wtp_upper, lower_difference = wtp_predict - wtp_lower) %>%
+  mutate(type_prediction = case_when(
+    wtp_predict < wtp_lower ~ "under estimation",
+    wtp_predict > wtp_upper ~ "over estimation", 
+    wtp_predict < wtp_upper & wtp_predict > wtp_lower ~ "within interval"
+  ))
 
 int_predictions %>%
   filter(country == "IND") %>%
-  ggplot(aes(x = bid_intervals_mean, y = wtp_predict)) +
+  ggplot(aes(x = bid_intervals_mean, y = wtp_predict, color = type_prediction)) +
   geom_point() +
   scale_x_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
   scale_y_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
   geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2), height = 0)) +
-  labs(title = "Overall Model : Indonesia Prediction Results") +
+  labs(title = "Overall Model : Indonesia Prediction Results", x = "Actual WTP", y = "Predicted WTP") +
   geom_abline(intercept = 0, slope = 1)
 
 int_predictions %>%
   filter(country == "MEX") %>%
-  ggplot(aes(x = bid_intervals_mean, y = wtp_predict)) +
+  ggplot(aes(x = bid_intervals_mean, y = wtp_predict, color = type_prediction)) +
   geom_point() +
   scale_x_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
   scale_y_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
   geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2)), height = 0) +
-  labs(title = "Overall Model : Mexico Prediction Results") +
+  labs(title = "Overall Model : Mexico Prediction Results", x = "Actual WTP", y = "Predicted WTP") +
   geom_abline(intercept = 0, slope = 1) 
 
 
-## now need to do parameretize model with indonesia data and predict on mexico and vice versa and make these graphs
+
+# average difference for those that fall out of intervals for upper and lower limits
+
+
 ```
 
 ```{r}
-#What percentage of our predictions fall within the reveal wtp range?
-int_predictions %>%
-  group_by(in_interval) %>%
-  summarise(count = length(in_interval)) %>%
-  mutate(perc = count/188)
+library(huxtable)
 
+#What percentage of our predictions fall within the reveal wtp range?
+(table <- int_predictions %>%
+  group_by(type_prediction) %>%
+  summarise(count = length(in_interval), avg_diff_upper = mean(upper_difference),
+            avg_diff_lower = mean(lower_difference)) %>%
+  mutate(perc = round((count/188)*100,1)))
+
+hux(table)
 ## 72.3% of our predictions fall out of the range... 
 ## 27.7% of our predictions fall in the range...
 ## the predictions aren't absolutely outrageous after eye-checking them. 
@@ -669,16 +682,34 @@ indo_model_mexi_df_predict <- data.frame(bind_interval_final_mex, wtp_predict = 
   select(survey_id, country, wtp_lower, wtp_upper, wtp_predict, in_interval, education, rank_one, fishtech, sos, info, own) %>%
   unite(interval, wtp_lower:wtp_upper, sep = ", ", remove = FALSE) %>%
   mutate(bid_intervals_mean = (wtp_lower + wtp_upper)/2) %>%
-  mutate(interval_range = (wtp_upper - wtp_lower)) 
+  mutate(interval_range = (wtp_upper - wtp_lower),
+         upper_difference = wtp_predict - wtp_upper,
+         lower_difference = wtp_predict - wtp_lower
+         )  %>%
+  mutate(type_prediction = case_when(
+    wtp_predict < wtp_lower ~ "under estimation",
+    wtp_predict > wtp_upper ~ "over estimation", 
+    wtp_predict < wtp_upper & wtp_predict > wtp_lower ~ "within interval"
+  ))
 
 indo_model_mexi_df_predict %>%
-  ggplot(aes(x = bid_intervals_mean, y = wtp_predict)) +
+  ggplot(aes(x = bid_intervals_mean, y = wtp_predict, color = type_prediction)) +
   geom_point() +
   scale_x_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
   scale_y_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
   geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2), height = 0)) +
-  labs(title = "Indo Model Predicted on Mexican Data") +
+  labs(title = "Indonesia Model Predicted on Mexican Data", x = "Actual WTP", y = "Predicted WTP") +
   geom_abline(intercept = 0, slope = 1)
+
+(table2 <- indo_model_mexi_df_predict %>%
+  group_by(type_prediction) %>%
+  summarise(count = length(in_interval), 
+            avg_diff_upper = mean(upper_difference),
+            avg_diff_lower = mean(lower_difference)) %>%
+  mutate(perc = round((count/81)*100,1)))
+
+hux(table2)
+
 
 ## predict indonesia data with mexican model
 mexi_model_indo_df_predict <- data.frame(bind_interval_final_ind, wtp_predict = predict(int_15_mex, newdata = bind_interval_final_ind)) %>%
@@ -686,17 +717,35 @@ mexi_model_indo_df_predict <- data.frame(bind_interval_final_ind, wtp_predict = 
   select(survey_id, country, wtp_lower, wtp_upper, wtp_predict, in_interval, education, rank_one, fishtech, sos, info, own) %>%
   unite(interval, wtp_lower:wtp_upper, sep = ", ", remove = FALSE) %>%
   mutate(bid_intervals_mean = (wtp_lower + wtp_upper)/2) %>%
-  mutate(interval_range = (wtp_upper - wtp_lower)) 
+  mutate(interval_range = (wtp_upper - wtp_lower),
+         type_prediction = case_when(
+    wtp_predict < wtp_lower ~ "under estimation",
+    wtp_predict > wtp_upper ~ "over estimation", 
+    wtp_predict < wtp_upper & wtp_predict > wtp_lower ~ "within interval"
+  ),
+  
+       upper_difference = wtp_predict - wtp_upper,
+         lower_difference = wtp_predict - wtp_lower)  
 
 mexi_model_indo_df_predict %>%
   filter(country == "IND") %>%
-  ggplot(aes(x = bid_intervals_mean, y = wtp_predict)) +
+  ggplot(aes(x = bid_intervals_mean, y = wtp_predict, color = type_prediction)) +
   geom_point() +
   scale_x_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
-  scale_y_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
+  scale_y_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.9, 11.02)) +
   geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2), height = 0)) +
-  labs(title = "Mexican Model Predicted on Indo Data") +
+  labs(title = "Mexican Model Predicted on Indo Data", x = "Actual WTP", y = "Predicted WTP") +
   geom_abline(intercept = 0, slope = 1)
+
+(table3 <- mexi_model_indo_df_predict %>%
+  group_by(type_prediction) %>%
+  summarise(count = length(in_interval),
+            avg_diff_upper = mean(upper_difference),
+            avg_diff_lower = mean(lower_difference)) %>%
+  mutate(perc = round((count/107)*100,1)))
+
+hux(table3)
+
 ```
 
 
