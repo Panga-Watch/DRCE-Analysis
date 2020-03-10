@@ -28,6 +28,7 @@ library(survival)
 library(Metrics)
 library(cowplot)
 library(reshape)
+library(RColorBrewer)
 ```
 
 # BLR including WTP
@@ -529,8 +530,11 @@ int_predictions %>%
   scale_x_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
   scale_y_continuous(breaks = c(-5.35, -3.56, -2.14, 0, 2.14, 3.56, 5.35, 7.12, 11.02), limits = c(-5.35, 11.02)) +
   geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2), height = 0)) +
-  labs(title = "Overall Model : Indonesia Prediction Results", x = "Actual WTP", y = "Predicted WTP") +
-  geom_abline(intercept = 0, slope = 1)
+  labs(x = "Actual Willingness To Pay Ranges", y = "Predicted Willingness To Pay", color = "") +
+  geom_abline(intercept = 0, slope = 1) +
+  theme(legend.position = "top") +
+  scale_color_manual(labels = c("Over Estimation", "Under Estimation", "Within Interval"), values = c("goldenrod1", "forestgreen", "cornflowerblue")) +
+  theme_bw()
 
 int_predictions %>%
   filter(country == "MEX") %>%
@@ -539,8 +543,11 @@ int_predictions %>%
   scale_x_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
   scale_y_continuous(breaks = c(-5.17, -3.62, -2.07, 0, 2.07, 3.62, 5.17, 7.75, 13.33), limits = c(-5.17, 13.33)) +
   geom_errorbarh(aes(xmin =  bid_intervals_mean - (interval_range/2), xmax = bid_intervals_mean + (interval_range/2)), height = 0) +
-  labs(title = "Overall Model : Mexico Prediction Results", x = "Actual WTP", y = "Predicted WTP") +
-  geom_abline(intercept = 0, slope = 1) 
+  labs(x = "Actual Willingness To Pay", y = "Predicted Willingness To Pay", color = "") +
+  geom_abline(intercept = 0, slope = 1) +
+  theme(legend.position = "top") +
+  scale_color_manual(labels = c("Over Estimation", "Under Estimation", "Within Interval"), values = c("goldenrod1", "forestgreen", "cornflowerblue")) +
+  theme_bw()
 
 
 

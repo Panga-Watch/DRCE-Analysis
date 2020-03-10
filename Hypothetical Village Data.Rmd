@@ -112,21 +112,21 @@ psc_predict_packages <- left_join(psc_predict, packages)
 
 dollar_values <- seq(-3, 8, by = 0.01)
 
-try_psc<-psc_predict_packages %>% 
-  #filter(regression_type == "interval") %>% 
-  group_by(package, int_15_wtp) %>% 
-  tally() %>% 
-  mutate(prop=n/sum(n)) %>% 
-  arrange(desc(int_15_wtp)) %>% 
-  mutate(prop_sum = cumsum(prop)) 
-
-try_psc %>% 
-  #filter(package == 1) %>%
-  ggplot( aes(x = int_15_wtp, y = prop_sum, color = factor(package))) +
-  geom_step() +
-  scale_x_continuous(breaks = seq(-4, 6, by = 1)) +
-  theme_bw() + 
-  labs(x = "Cost to Fisher ($/month)", y = "Proportion of Population to Opt In")
+# try_psc<-psc_predict_packages %>% 
+#   #filter(regression_type == "interval") %>% 
+#   group_by(package, int_15_wtp) %>% 
+#   tally() %>% 
+#   mutate(prop=n/sum(n)) %>% 
+#   arrange(desc(int_15_wtp)) %>% 
+#   mutate(prop_sum = cumsum(prop)) 
+# 
+# try_psc %>% 
+#   #filter(package == 1) %>%
+#   ggplot( aes(x = int_15_wtp, y = prop_sum, color = factor(package))) +
+#   geom_step() +
+#   scale_x_continuous(breaks = seq(-4, 6, by = 1)) +
+#   theme_bw() + 
+#   labs(x = "Cost to Fisher ($/month)", y = "Proportion of Population to Opt In")
 
 ```
 
@@ -406,3 +406,129 @@ graph_data_pepela <- Pepela_all_predictions %>%
 
 ```
 
+
+WKB data
+
+```{r}
+survey_data <- read_csv("int/log_log_variables.csv") %>%
+  select(country, community, education, fishtech, rank_one)
+
+WKB <- survey_data %>%
+  filter(community == "WKB") %>%
+  select(education, fishtech, rank_one)
+
+sos <- c(0,1)
+info <- c(0,1)
+own <- c("1", "2", "3", "4")
+
+packages <- expand.grid(sos = sos,info = info, own= own)
+
+
+wkb_all_packages <- merge(WKB, packages)
+
+write.csv(wkb_all_packages, "hypo_village_data/WKB/WKB.csv", row.names = FALSE)
+
+## load in specific model 
+load("output/int_15.rda")
+
+wkb_predict <- data.frame(wkb_all_packages, int_15_wtp = predict(int_15, newdata = wkb_all_packages)) 
+
+packages <- read_csv("raw/packages.csv")  %>%
+  filter(package <= 16) %>%
+  mutate(sos = ifelse(sos==2,1,0), info=ifelse(info==2,0,1)) %>%
+  mutate(own = factor(own))
+
+wkb_predict_packages <- left_join(wkb_predict, packages) 
+
+write.csv(wkb_predict_packages, "hypo_village_data/WKB/WKB_predictions.csv", row.names = FALSE)
+
+
+## lets try it a different way, without comparing the dollar values... I think we get same result, just a bit harder to interpret
+
+dollar_values <- seq(-3, 8, by = 0.01)
+
+# try_psc<-psc_predict_packages %>% 
+#   #filter(regression_type == "interval") %>% 
+#   group_by(package, int_15_wtp) %>% 
+#   tally() %>% 
+#   mutate(prop=n/sum(n)) %>% 
+#   arrange(desc(int_15_wtp)) %>% 
+#   mutate(prop_sum = cumsum(prop)) 
+# 
+# try_psc %>% 
+#   #filter(package == 1) %>%
+#   ggplot( aes(x = int_15_wtp, y = prop_sum, color = factor(package))) +
+#   geom_step() +
+#   scale_x_continuous(breaks = seq(-4, 6, by = 1)) +
+#   theme_bw() + 
+#   labs(x = "Cost to Fisher ($/month)", y = "Proportion of Population to Opt In")
+
+```
+
+
+```{r}
+
+## Make a list of data frames for each package combination. 
+my_data_wkb <- list()
+for (i in unique(wkb_predict_packages$package)) {
+    my_data_wkb[[i]] <- filter(wkb_predict_packages, package == i)
+}
+
+save(my_data_wkb, file="hypo_village_data/WKB/WKB_predict_by_package.RData") ## save this list to read back in for graphs.
+
+
+```
+
+```{r}
+
+# read list in to begin making data usable to graph
+load("hypo_village_data/WKB/WKB_predict_by_package.RData")
+
+mean(my_data_wkb[[1]]$int_15_wtp)
+
+test <- my_data_wkb[[1]] ## this is psc with package 1 predictions. Can do the same for all 16 packages.
+
+sim_total <- nrow(my_data_wkb[[1]])
+dollar_values <- seq(-3, 8, by = 0.01)
+
+## Interval Model Graph Data ##
+system.time(new_data_int <- lapply(my_data_wkb, function(x) {
+  
+  graph_df <- x %>%
+  merge(dollar_values) %>%
+  mutate(opt_in_int = ifelse(int_15_wtp > y, 1, 0 )) %>% ## if the wtp is greater than payment value, then they will opt in, otherwise, opt out
+  arrange(opt_in_int)
+
+group_df_opt_in <- graph_df %>%
+  group_by(y, opt_in_int) %>%
+  tally() %>%
+  filter(opt_in_int == 1) %>% ## filter for all opt ins...
+  mutate(perc = n/sim_total,
+         opt_in_out = "Opt In") %>% ##384 total scenarios
+  ungroup()
+
+  
+}))
+beep()
+
+#tests <- new_data_int[[1]]
+save(new_data_int, file="hypo_village_data/WKB/WKB_predict_int_graphdata.RData")
+
+load(file="hypo_village_data/WKB/WKB_predict_int_graphdata.RData")
+
+
+int_all <- bind_rows(new_data_int, .id = "package") %>%
+  merge(packages) %>%
+  rename(
+         "opt" = "opt_in_int") %>%
+  mutate(regression_type = "interval",
+         package = as.integer(package))
+
+
+WKB_all_predictions <- int_all
+
+
+## Save the final dataframe
+
+write.csv(WKB_all_predictions, "hypo_village_data/WKB/WKB_all_predictions_FINAL.csv", row.names = FALSE)
+```
