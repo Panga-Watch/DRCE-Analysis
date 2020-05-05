@@ -1,6 +1,6 @@
 # Data prep and analysis of Panga Watch survey data.
 
-1. data_prep.Rmd prepares the data for conditional logistic regression analysis.
+1. data_prep.Rmd prepares the data for logistic regression analysis.
 
 2. data_analysis.Rmd analyzes the data which was prepared in data_prep.Rmd. The analysis conducted here are various conditional logistic regressions. 
 
